@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureChunkingMediaFileUploa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureLargeFileUploader", "AzureLargeFileUploader\AzureLargeFileUploader.csproj", "{B3821EDE-689E-4B36-A12F-EFF405C86DBE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureChunkingMediaEncoder", "AzureChunkingMediaEncoder\AzureChunkingMediaEncoder.csproj", "{45A2E3BD-6D9E-4830-974F-623C8D55D3F2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{B3821EDE-689E-4B36-A12F-EFF405C86DBE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B3821EDE-689E-4B36-A12F-EFF405C86DBE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B3821EDE-689E-4B36-A12F-EFF405C86DBE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{45A2E3BD-6D9E-4830-974F-623C8D55D3F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45A2E3BD-6D9E-4830-974F-623C8D55D3F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45A2E3BD-6D9E-4830-974F-623C8D55D3F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45A2E3BD-6D9E-4830-974F-623C8D55D3F2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

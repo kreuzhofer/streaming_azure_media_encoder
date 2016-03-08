@@ -1,4 +1,9 @@
-﻿using System.Net;
+﻿using System.Linq.Expressions;
+using System.Net;
+using System.Security.Policy;
+using AzureChunkingMediaFileUploader;
+using Microsoft.WindowsAzure.Storage.Queue;
+using Newtonsoft.Json;
 
 namespace LargeFileUploader
 {
@@ -16,58 +21,45 @@ namespace LargeFileUploader
 
     public static class LargeFileUploaderUtils
     {
-        const int kB = 1024;
-        const int MB = kB * 1024;
-        const long GB = MB * 1024;
-        private const int padding = 3;
-        private const char SEPERATOR = '_';
-        public static int NumBytesPerChunk = 4 * MB; // A block may be up to 4 MB in size. 
         public static Action<string> Log { get; set; }
         public static void UseConsoleForLogging() { Log = Console.Out.WriteLine; }
         const uint DEFAULT_PARALLELISM = 1;
 
         public static Task<string> UploadAsync(string inputFile, string storageConnectionString, string containerName, uint uploadParallelism = DEFAULT_PARALLELISM)
         {
-            return (new FileInfo(inputFile)).UploadAsync(CloudStorageAccount.Parse(storageConnectionString), containerName, uploadParallelism);
+            var hash = FileHasher.MD5Hash(inputFile);
+            return (new FileInfo(inputFile)).UploadAsync(CloudStorageAccount.Parse(storageConnectionString), containerName, hash, uploadParallelism);
         }
 
-        public static Task<string> UploadAsync(this FileInfo file, CloudStorageAccount storageAccount, string containerName, uint uploadParallelism = DEFAULT_PARALLELISM)
+        public static Task<string> UploadAsync(this FileInfo file, CloudStorageAccount storageAccount, string containerName, string hash, uint uploadParallelism = DEFAULT_PARALLELISM)
         {
             return UploadAsync(
                 fetchLocalData: (offset, length) => file.GetFileContentAsync(offset, (int) length),
-                blobLenth: file.Length,
+                blobLength: file.Length,
                 storageAccount: storageAccount,
                 containerName: containerName,
                 blobName: file.Name,
+                hash: hash,
                 uploadParallelism: uploadParallelism);
         }
 
-        public static Task<string> UploadAsync(this byte[] data, CloudStorageAccount storageAccount, string containerName, string blobName, uint uploadParallelism = DEFAULT_PARALLELISM)
-        {
-            return UploadAsync(
-                fetchLocalData: (offset, count) => { return Task.FromResult((new ArraySegment<byte>(data, (int)offset, (int) count)).Array); },
-                blobLenth: data.Length,
-                storageAccount: storageAccount,
-                containerName: containerName,
-                blobName: blobName,
-                uploadParallelism: uploadParallelism);
-        }
-
-        public static async Task<string> UploadAsync(Func<long, long, Task<byte[]>> fetchLocalData, long blobLenth,
-            CloudStorageAccount storageAccount, string containerName, string blobName, uint uploadParallelism = DEFAULT_PARALLELISM) 
+        public static async Task<string> UploadAsync(Func<long, long, Task<byte[]>> fetchLocalData, long blobLength,
+            CloudStorageAccount storageAccount, string containerName, string blobName, string hash, uint uploadParallelism = DEFAULT_PARALLELISM) 
         {
             var blobClient = storageAccount.CreateCloudBlobClient();
             var container = blobClient.GetContainerReference(containerName);
             await container.CreateIfNotExistsAsync();
 
-            const int MAXIMUM_UPLOAD_SIZE = 4 * MB;
-            if (NumBytesPerChunk > MAXIMUM_UPLOAD_SIZE) { NumBytesPerChunk = MAXIMUM_UPLOAD_SIZE; }
+            if (Constants.NumBytesPerChunk > Constants.MAXIMUM_UPLOAD_SIZE)
+            {
+                Constants.NumBytesPerChunk = Constants.MAXIMUM_UPLOAD_SIZE;
+            }
 
             #region Which blocks exist in the file
 
             var allBlobsInFile = Enumerable
-                 .Range(0, 1 + ((int)(blobLenth / NumBytesPerChunk)))
-                 .Select(_ => new BlobMetadata(_, blobLenth, NumBytesPerChunk))
+                 .Range(0, 1 + ((int)(blobLength /Constants.NumBytesPerChunk)))
+                 .Select(_ => new BlobMetadata(_, blobLength, Constants.NumBytesPerChunk))
                  .Where(block => block.Length > 0)
                  .ToList();
 
@@ -75,7 +67,7 @@ namespace LargeFileUploader
 
             #region Which blocks are already uploaded
 
-            var existingBlobs = container.ListBlobs().Select(blob=> new BlobMetadata(int.Parse(blob.Uri.Segments.Last().Split(SEPERATOR).Last()), blobLenth, NumBytesPerChunk)).ToList();
+            var existingBlobs = container.ListBlobs().Select(blob=> new BlobMetadata(int.Parse(blob.Uri.Segments.Last().Split(Constants.SEPERATOR).Last()), blobLength, Constants.NumBytesPerChunk)).ToList();
             List<BlobMetadata> missingBlobs = null;
             try
             {
@@ -98,7 +90,7 @@ namespace LargeFileUploader
                 await ExecuteUntilSuccessAsync(async () =>
                 {
                     var blockBlob =
-                        container.GetBlockBlobReference(blobName + SEPERATOR + block.Id.ToString().PadLeft(padding, '0'));
+                        container.GetBlockBlobReference(blobName + Constants.SEPERATOR + block.Id.ToString().PadLeft(Constants.PADDING, '0'));
                     await blockBlob.PutBlockAsync(
                         blockId: block.BlockId,
                         blockData: new MemoryStream(blockData, true),
@@ -117,6 +109,27 @@ namespace LargeFileUploader
             };
 
             var s = new Statistics(missingBlobs.Sum(b => b.Length));
+
+            try
+            {
+                // queue a new message to notifiy the downloaders about the new upload
+                var queueClient = storageAccount.CreateCloudQueueClient();
+                var queue = queueClient.GetQueueReference("uploadnotifications");
+                queue.CreateIfNotExists();
+                var metaData = new UploadMetaData()
+                {
+                    BlobName = blobName,
+                    Length = blobLength,
+                    ContainerName = containerName,
+                    Hash = hash
+                };
+                queue.AddMessage(new CloudQueueMessage(JsonConvert.SerializeObject(metaData)));
+            }
+            catch (Exception ex)
+            {
+                log("Error {0}", ex.Message);
+                throw;
+            }
 
             await LargeFileUploaderUtils.ForEachAsync(
                 source: missingBlobs,
@@ -207,22 +220,8 @@ namespace LargeFileUploader
             return (content) => Convert.ToBase64String(hashFunction.ComputeHash(content));
         }
 
-        internal class BlobMetadata
-        {
-            internal BlobMetadata(int id, long length, int bytesPerChunk)
-            {
-                this.Id = id;
-                this.BlockId = Convert.ToBase64String(System.BitConverter.GetBytes(id));
-                this.Index = ((long)id) * ((long)bytesPerChunk);
-                long remainingBytesInFile = length - this.Index;
-                this.Length = (int)Math.Min(remainingBytesInFile, (long)bytesPerChunk);
-            }
 
-            public long Index { get; private set; }
-            public int Id { get; private set; }
-            public string BlockId { get; private set; }
-            public long Length { get; private set; }
-        }
+
 
         public class Statistics
         {
@@ -243,8 +242,8 @@ namespace LargeFileUploader
                     done = this.Done;
                 }
 
-                var kbPerSec = (((double)moreBytes) / (DateTime.UtcNow.Subtract(start).TotalSeconds * kB));
-                var MBPerMin = (((double)moreBytes) / (DateTime.UtcNow.Subtract(start).TotalMinutes * MB));
+                var kbPerSec = (((double)moreBytes) / (DateTime.UtcNow.Subtract(start).TotalSeconds *Constants.kB));
+                var MBPerMin = (((double)moreBytes) / (DateTime.UtcNow.Subtract(start).TotalMinutes *Constants.MB));
 
                 log(
                     "Uploaded {0} ({1}) with {2} kB/sec ({3} MB/min), {4}",
@@ -276,25 +275,25 @@ namespace LargeFileUploader
 
             private static string absoluteProgress(long current, long total)
             {
-                if (total < kB)
+                if (total < Constants.kB)
                 {
                     // Bytes is reasonable
                     return string.Format("{0} of {1} bytes", current, total);
                 }
-                else if (total < 10 * MB)
+                else if (total < 10 *Constants.MB)
                 {
                     // kB is a reasonable unit
-                    return string.Format("{0} of {1} kByte", (current / kB), (total / kB));
+                    return string.Format("{0} of {1} kByte", (current /Constants.kB), (total /Constants.kB));
                 }
-                else if (total < 10 * GB)
+                else if (total < 10 *Constants.GB)
                 {
                     // MB is a reasonable unit
-                    return string.Format("{0} of {1} MB", (current / MB), (total / MB));
+                    return string.Format("{0} of {1} MB", (current /Constants.MB), (total /Constants.MB));
                 }
                 else
                 {
                     // GB is a reasonable unit
-                    return string.Format("{0} of {1} GB", (current / GB), (total / GB));
+                    return string.Format("{0} of {1} GB", (current /Constants.GB), (total /Constants.GB));
                 }
             }
 
@@ -304,5 +303,6 @@ namespace LargeFileUploader
                     (100.0 * current / total).ToString("F3"));
             }
         }
+
     }
 }
