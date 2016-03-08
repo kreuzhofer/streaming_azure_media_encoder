@@ -19,89 +19,76 @@ namespace LargeFileUploader
         const int kB = 1024;
         const int MB = kB * 1024;
         const long GB = MB * 1024;
+        private const int padding = 3;
+        private const char SEPERATOR = '_';
         public static int NumBytesPerChunk = 4 * MB; // A block may be up to 4 MB in size. 
         public static Action<string> Log { get; set; }
         public static void UseConsoleForLogging() { Log = Console.Out.WriteLine; }
         const uint DEFAULT_PARALLELISM = 1;
 
-        public static Task<string> UploadAsync(string inputFile, string storageConnectionString, string containerName, EventHandler<int> reportProgress, uint uploadParallelism = DEFAULT_PARALLELISM)
+        public static Task<string> UploadAsync(string inputFile, string storageConnectionString, string containerName, uint uploadParallelism = DEFAULT_PARALLELISM)
         {
-            return (new FileInfo(inputFile)).UploadAsync(CloudStorageAccount.Parse(storageConnectionString), containerName, reportProgress, uploadParallelism);
+            return (new FileInfo(inputFile)).UploadAsync(CloudStorageAccount.Parse(storageConnectionString), containerName, uploadParallelism);
         }
 
-        public static Task<string> UploadAsync(this FileInfo file, CloudStorageAccount storageAccount, string containerName, EventHandler<int> reportProgress, uint uploadParallelism = DEFAULT_PARALLELISM)
+        public static Task<string> UploadAsync(this FileInfo file, CloudStorageAccount storageAccount, string containerName, uint uploadParallelism = DEFAULT_PARALLELISM)
         {
             return UploadAsync(
                 fetchLocalData: (offset, length) => file.GetFileContentAsync(offset, (int) length),
                 blobLenth: file.Length,
                 storageAccount: storageAccount,
                 containerName: containerName,
-                blobName: file.Name, reportProgress: reportProgress,
+                blobName: file.Name,
                 uploadParallelism: uploadParallelism);
         }
 
-        public static Task<string> UploadAsync(this byte[] data, CloudStorageAccount storageAccount, string containerName, string blobName, EventHandler<int> reportProgress, uint uploadParallelism = DEFAULT_PARALLELISM)
+        public static Task<string> UploadAsync(this byte[] data, CloudStorageAccount storageAccount, string containerName, string blobName, uint uploadParallelism = DEFAULT_PARALLELISM)
         {
             return UploadAsync(
                 fetchLocalData: (offset, count) => { return Task.FromResult((new ArraySegment<byte>(data, (int)offset, (int) count)).Array); },
                 blobLenth: data.Length,
                 storageAccount: storageAccount,
                 containerName: containerName,
-                blobName: blobName, reportProgress: reportProgress,
+                blobName: blobName,
                 uploadParallelism: uploadParallelism);
         }
 
-        public static async Task<string> UploadAsync(Func<long, long, Task<byte[]>> fetchLocalData, long blobLenth, CloudStorageAccount storageAccount, string containerName, string blobName, EventHandler<int> reportProgress, uint uploadParallelism = DEFAULT_PARALLELISM)
+        public static async Task<string> UploadAsync(Func<long, long, Task<byte[]>> fetchLocalData, long blobLenth,
+            CloudStorageAccount storageAccount, string containerName, string blobName, uint uploadParallelism = DEFAULT_PARALLELISM) 
         {
             var blobClient = storageAccount.CreateCloudBlobClient();
             var container = blobClient.GetContainerReference(containerName);
             await container.CreateIfNotExistsAsync();
-            var blockBlob = container.GetBlockBlobReference(blobName);
-            return await UploadAsync(fetchLocalData, blobLenth, blockBlob, reportProgress, uploadParallelism);
-        }
 
-        public static async Task<string> UploadAsync(Func<long, long, Task<byte[]>> fetchLocalData, long blobLenth,
-            CloudBlockBlob blockBlob, EventHandler<int> reportProgress, uint uploadParallelism = DEFAULT_PARALLELISM) 
-        {
             const int MAXIMUM_UPLOAD_SIZE = 4 * MB;
             if (NumBytesPerChunk > MAXIMUM_UPLOAD_SIZE) { NumBytesPerChunk = MAXIMUM_UPLOAD_SIZE; }
 
             #region Which blocks exist in the file
 
-            var allBlockInFile = Enumerable
+            var allBlobsInFile = Enumerable
                  .Range(0, 1 + ((int)(blobLenth / NumBytesPerChunk)))
-                 .Select(_ => new BlockMetadata(_, blobLenth, NumBytesPerChunk))
+                 .Select(_ => new BlobMetadata(_, blobLenth, NumBytesPerChunk))
                  .Where(block => block.Length > 0)
                  .ToList();
-            var blockIdList = allBlockInFile.Select(_ => _.BlockId).ToList();
 
             #endregion
 
             #region Which blocks are already uploaded
 
-            List<BlockMetadata> missingBlocks = null;
+            var existingBlobs = container.ListBlobs().Select(blob=> new BlobMetadata(int.Parse(blob.Uri.Segments.Last().Split(SEPERATOR).Last()), blobLenth, NumBytesPerChunk)).ToList();
+            List<BlobMetadata> missingBlobs = null;
             try
             {
-                var existingBlocks = (await blockBlob.DownloadBlockListAsync(
-                    BlockListingFilter.Uncommitted,
-                    AccessCondition.GenerateEmptyCondition(),
-                    new BlobRequestOptions {},
-                    new OperationContext {}))
-                    .Where(_ => _.Length == NumBytesPerChunk)
-                    .ToList();
-
-                missingBlocks = allBlockInFile.Where(blockInFile => !existingBlocks.Any(existingBlock =>
-                    existingBlock.Name == blockInFile.BlockId &&
-                    existingBlock.Length == blockInFile.Length)).ToList();
+                missingBlobs = allBlobsInFile.Where(blobInFile => existingBlobs.All(existingBlob => existingBlob.BlockId != blobInFile.BlockId)).ToList();
             }
             catch (StorageException)
             {
-                missingBlocks = allBlockInFile;
+                missingBlobs = allBlobsInFile;
             }
 
             #endregion
 
-            Func<BlockMetadata, Statistics, Task> uploadBlockAsync = async (block, stats) =>
+            Func<BlobMetadata, Statistics, Task> uploadBlockAsync = async (block, stats) =>
             {
                 byte[] blockData = await fetchLocalData(block.Index, block.Length);
                 string contentHash = md5()(blockData);
@@ -110,6 +97,8 @@ namespace LargeFileUploader
 
                 await ExecuteUntilSuccessAsync(async () =>
                 {
+                    var blockBlob =
+                        container.GetBlockBlobReference(blobName + SEPERATOR + block.Id.ToString().PadLeft(padding, '0'));
                     await blockBlob.PutBlockAsync(
                         blockId: block.BlockId,
                         blockData: new MemoryStream(blockData, true),
@@ -121,27 +110,22 @@ namespace LargeFileUploader
                             UseTransactionalMD5 = true
                         },
                         operationContext: new OperationContext());
-                    reportProgress(null, block.Id);
+                    await blockBlob.PutBlockListAsync(new[] {block.BlockId});
                 }, consoleExceptionHandler);
 
                 stats.Add(block.Length, start);
             };
 
-            var s = new Statistics(missingBlocks.Sum(b => b.Length));
+            var s = new Statistics(missingBlobs.Sum(b => b.Length));
 
             await LargeFileUploaderUtils.ForEachAsync(
-                source: missingBlocks,
+                source: missingBlobs,
                 parallelUploads: 4,
                 body: blockMetadata => uploadBlockAsync(blockMetadata, s));
 
-            await ExecuteUntilSuccessAsync(async () =>
-            {
-                await blockBlob.PutBlockListAsync(blockIdList);
-            }, consoleExceptionHandler);
+            log("PutBlockList succeeded, finished upload to {0}", containerName);
 
-            log("PutBlockList succeeded, finished upload to {0}", blockBlob.Uri.AbsoluteUri);
-
-            return blockBlob.Uri.AbsoluteUri;
+            return blobName;
         }
 
         internal static void log(string format, params object[] args)
@@ -223,9 +207,9 @@ namespace LargeFileUploader
             return (content) => Convert.ToBase64String(hashFunction.ComputeHash(content));
         }
 
-        internal class BlockMetadata
+        internal class BlobMetadata
         {
-            internal BlockMetadata(int id, long length, int bytesPerChunk)
+            internal BlobMetadata(int id, long length, int bytesPerChunk)
             {
                 this.Id = id;
                 this.BlockId = Convert.ToBase64String(System.BitConverter.GetBytes(id));
@@ -240,7 +224,7 @@ namespace LargeFileUploader
             public long Length { get; private set; }
         }
 
-        internal class Statistics
+        public class Statistics
         {
             public Statistics(long totalBytes) { this.TotalBytes = totalBytes; }
 

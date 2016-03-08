@@ -22,10 +22,8 @@ namespace AzureChunkingMediaFileUploader
             var containerName = args[1];
             var connectionString = args[2];
 
-            LargeFileUploaderUtils.UploadAsync(fileToUpload, connectionString, containerName, (sender, i) =>
-            {
-                Console.WriteLine(i);
-            });
+            LargeFileUploaderUtils.Log = Console.WriteLine;
+            LargeFileUploaderUtils.UploadAsync(fileToUpload, connectionString, containerName);
 
             Console.ReadLine();
             return 0;
