@@ -12,21 +12,28 @@ namespace AzureChunkingMediaFileUploader
     {
         static int Main(string[] args)
         {
-            if(args.Length<3)
+            if(args.Length<5)
             {
                 Help();
                 return -1;
             }
 
-            var fileToUpload = args[0];
-            var containerName = args[1];
-            var connectionString = args[2];
-
-            LargeFileUploaderUtils.Log = Console.WriteLine;
-            LargeFileUploaderUtils.UploadAsync(fileToUpload, connectionString, containerName);
+            StartUpload(args);
 
             Console.ReadLine();
             return 0;
+        }
+
+        private static async void StartUpload(string[] args)
+        {
+            var fileToUpload = args[0];
+            var containerName = args[1];
+            var connectionString = args[2];
+            var encoderParameters = args[3];
+            var targetFilename = args[4];
+
+            LargeFileUploaderUtils.Log = Console.WriteLine;
+            await LargeFileUploaderUtils.UploadAsync(fileToUpload, connectionString, containerName, encoderParameters, targetFilename);
         }
 
         private static void Help()

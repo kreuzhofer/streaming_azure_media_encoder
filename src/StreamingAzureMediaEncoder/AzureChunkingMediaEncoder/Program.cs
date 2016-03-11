@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.IO.Pipes;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -34,58 +36,118 @@ namespace AzureChunkingMediaEncoder
 
                     StartDownloadAndEncode(JsonConvert.DeserializeObject<UploadMetaData>(message.AsString), storageAccount);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     Thread.Sleep(1000);
                 }
             }
         }
 
-        private static void StartDownloadAndEncode(UploadMetaData uploadMetaData, CloudStorageAccount storageAccount)
+        private static async void StartDownloadAndEncode(UploadMetaData uploadMetaData, CloudStorageAccount storageAccount)
+        {
+            await StartDownloadAndEncodeAsync(uploadMetaData, storageAccount);
+        }
+
+        private static async Task StartDownloadAndEncodeAsync(UploadMetaData uploadMetaData, CloudStorageAccount storageAccount)
         {
             var blobClient = storageAccount.CreateCloudBlobClient();
             var container = blobClient.GetContainerReference(uploadMetaData.ContainerName);
             container.CreateIfNotExists();
 
             // check if file exists and delete
-            if (File.Exists(uploadMetaData.BlobName))
+            if (File.Exists(uploadMetaData.TargetFilename))
             {
-                File.Delete(uploadMetaData.BlobName);
+                File.Delete(uploadMetaData.TargetFilename);
             }
 
-            var allBlobsInFile = Enumerable
-                .Range(0, 1 + ((int) (uploadMetaData.Length / Constants.NumBytesPerChunk)))
-                .Select(_ => new BlobMetadata(_, uploadMetaData.Length, Constants.NumBytesPerChunk))
-                .Where(block => block.Length > 0)
-                .ToList();
-            var existingBlobs = container.ListBlobs().Select(blob => new BlobMetadata(int.Parse(blob.Uri.Segments.Last().Split(Constants.SEPERATOR).Last()), uploadMetaData.Length, Constants.NumBytesPerChunk)).ToList();
+            var inputPipeReady = new AutoResetEvent(false);
 
-            for (int i = 0; i < allBlobsInFile.Count; i++)
+            // start named pipe server
+            var inputPipeTask = Task.Factory.StartNew(async () =>
             {
-                var metaData = allBlobsInFile[i];
+                var server = new NamedPipeServerStream(uploadMetaData.BlobName);
+                inputPipeReady.Set();
+                server.WaitForConnection();
 
-                while (existingBlobs.All(b => b.Id != i)) // wait for blob
+                var allBlobsInFile = Enumerable
+                    .Range(0, 1 + ((int) (uploadMetaData.Length/Constants.NumBytesPerChunk)))
+                    .Select(_ => new BlobMetadata(_, uploadMetaData.Length, Constants.NumBytesPerChunk))
+                    .Where(block => block.Length > 0)
+                    .ToList();
+                var existingBlobs = container.ListBlobs().Select(blob => new BlobMetadata(int.Parse(blob.Uri.Segments.Last().Split(Constants.SEPERATOR).Last()), uploadMetaData.Length, Constants.NumBytesPerChunk)).ToList();
+
+                for (int i = 0; i < allBlobsInFile.Count; i++)
                 {
-                    existingBlobs = container.ListBlobs().Select(blob => new BlobMetadata(int.Parse(blob.Uri.Segments.Last().Split(Constants.SEPERATOR).Last()), uploadMetaData.Length, Constants.NumBytesPerChunk)).ToList();
-                    Task.Delay(1000);
+                    var metaData = allBlobsInFile[i];
+
+                    while (existingBlobs.All(b => b.Id != i)) // wait for blob
+                    {
+                        existingBlobs = container.ListBlobs().Select(blob => new BlobMetadata(int.Parse(blob.Uri.Segments.Last().Split(Constants.SEPERATOR).Last()), uploadMetaData.Length, Constants.NumBytesPerChunk)).ToList();
+                        await Task.Delay(1000);
+                    }
+
+                    var fileName = uploadMetaData.BlobName + Constants.SEPERATOR +
+                                   metaData.Id.ToString().PadLeft(Constants.PADDING, '0');
+                    var blobRef = container.GetBlobReference(fileName);
+
+                    var buffer = new byte[Constants.NumBytesPerChunk];
+                    blobRef.DownloadToByteArray(buffer, 0);
+
+                    await server.WriteAsync(buffer, 0, (int)metaData.Length);
+                    await server.FlushAsync();
+
+                    //await process.StandardInput.BaseStream.WriteAsync(buffer, 0, Constants.NumBytesPerChunk);
+                    //await process.StandardInput.BaseStream.FlushAsync();
+
+                    //blobRef.DownloadToFile(uploadMetaData.BlobName, FileMode.Append);
                 }
+                server.Disconnect();
+            });
 
-                var fileName = uploadMetaData.BlobName + Constants.SEPERATOR +
-                               metaData.Id.ToString().PadLeft(Constants.PADDING, '0');
-                var blobRef = container.GetBlobReference(fileName);
+            inputPipeReady.WaitOne();
 
-                blobRef.DownloadToFile(uploadMetaData.BlobName, FileMode.Append);
+            var ffmpeg = new FileInfo("ffmpeg.exe");
+            string ffmpegArgs = @"-i \\.\pipe\{2} {0} {1}";
+            var ffmpegArgsFormatted = String.Format(ffmpegArgs, uploadMetaData.EncoderParameters, uploadMetaData.TargetFilename, uploadMetaData.BlobName);
+            var startInfo = new ProcessStartInfo()
+            {
+                UseShellExecute = false,
+                FileName = ffmpeg.ToString(),
+                Arguments = ffmpegArgsFormatted,
+                RedirectStandardInput = true,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+            };
+            var process = new Process {StartInfo = startInfo, EnableRaisingEvents = true};
+
+            process.OutputDataReceived += (sender, args) => { Console.WriteLine(args.Data); };
+            process.ErrorDataReceived += (sender, args) => { Console.WriteLine(args.Data); };
+
+            try
+            {
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                throw;
+            }
+
+            process.WaitForExit();
+            Task.WaitAll(new[] {inputPipeTask}); // wait for all pipe tasks to complete
             Console.WriteLine("Done");
-            var hash = FileHasher.MD5Hash(uploadMetaData.BlobName);
-            if (hash != uploadMetaData.Hash)
-            {
-                Console.WriteLine("Error. Filehash invalid.");
-            }
-            else
-            {
-                Console.WriteLine("Filehash ok");
-            }
+
+            //var hash = FileHasher.MD5Hash(uploadMetaData.BlobName);
+            //if (hash != uploadMetaData.Hash)
+            //{
+            //    Console.WriteLine("Error. Filehash invalid.");
+            //}
+            //else
+            //{
+            //    Console.WriteLine("Filehash ok");
+            //}
         }
     }
 }

@@ -25,13 +25,13 @@ namespace LargeFileUploader
         public static void UseConsoleForLogging() { Log = Console.Out.WriteLine; }
         const uint DEFAULT_PARALLELISM = 1;
 
-        public static Task<string> UploadAsync(string inputFile, string storageConnectionString, string containerName, uint uploadParallelism = DEFAULT_PARALLELISM)
+        public static Task<string> UploadAsync(string inputFile, string storageConnectionString, string containerName, string encoderParameters, string targetFilename, uint uploadParallelism = DEFAULT_PARALLELISM)
         {
             var hash = FileHasher.MD5Hash(inputFile);
-            return (new FileInfo(inputFile)).UploadAsync(CloudStorageAccount.Parse(storageConnectionString), containerName, hash, uploadParallelism);
+            return (new FileInfo(inputFile)).UploadAsync(CloudStorageAccount.Parse(storageConnectionString), containerName, hash, encoderParameters, targetFilename, uploadParallelism);
         }
 
-        public static Task<string> UploadAsync(this FileInfo file, CloudStorageAccount storageAccount, string containerName, string hash, uint uploadParallelism = DEFAULT_PARALLELISM)
+        public static Task<string> UploadAsync(this FileInfo file, CloudStorageAccount storageAccount, string containerName, string hash, string encoderParameters, string targetFilename, uint uploadParallelism = DEFAULT_PARALLELISM)
         {
             return UploadAsync(
                 fetchLocalData: (offset, length) => file.GetFileContentAsync(offset, (int) length),
@@ -40,11 +40,14 @@ namespace LargeFileUploader
                 containerName: containerName,
                 blobName: file.Name,
                 hash: hash,
+                encoderParameters: encoderParameters,
+                targetFilename: targetFilename,
                 uploadParallelism: uploadParallelism);
         }
 
         public static async Task<string> UploadAsync(Func<long, long, Task<byte[]>> fetchLocalData, long blobLength,
-            CloudStorageAccount storageAccount, string containerName, string blobName, string hash, uint uploadParallelism = DEFAULT_PARALLELISM) 
+            CloudStorageAccount storageAccount, string containerName, string blobName, string hash, string encoderParameters,
+            string targetFilename, uint uploadParallelism = DEFAULT_PARALLELISM) 
         {
             var blobClient = storageAccount.CreateCloudBlobClient();
             var container = blobClient.GetContainerReference(containerName);
@@ -121,7 +124,9 @@ namespace LargeFileUploader
                     BlobName = blobName,
                     Length = blobLength,
                     ContainerName = containerName,
-                    Hash = hash
+                    Hash = hash,
+                    EncoderParameters = encoderParameters,
+                    TargetFilename = targetFilename,
                 };
                 queue.AddMessage(new CloudQueueMessage(JsonConvert.SerializeObject(metaData)));
             }
