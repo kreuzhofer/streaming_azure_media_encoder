@@ -38,6 +38,7 @@ namespace AzureChunkingMediaEncoder
                 }
                 catch (Exception)
                 {
+                    Console.WriteLine("Waiting for task...");
                     Thread.Sleep(1000);
                 }
             }
@@ -95,11 +96,6 @@ namespace AzureChunkingMediaEncoder
 
                     await server.WriteAsync(buffer, 0, (int)metaData.Length);
                     await server.FlushAsync();
-
-                    //await process.StandardInput.BaseStream.WriteAsync(buffer, 0, Constants.NumBytesPerChunk);
-                    //await process.StandardInput.BaseStream.FlushAsync();
-
-                    //blobRef.DownloadToFile(uploadMetaData.BlobName, FileMode.Append);
                 }
                 server.Disconnect();
             });
@@ -138,16 +134,6 @@ namespace AzureChunkingMediaEncoder
             process.WaitForExit();
             Task.WaitAll(new[] {inputPipeTask}); // wait for all pipe tasks to complete
             Console.WriteLine("Done");
-
-            //var hash = FileHasher.MD5Hash(uploadMetaData.BlobName);
-            //if (hash != uploadMetaData.Hash)
-            //{
-            //    Console.WriteLine("Error. Filehash invalid.");
-            //}
-            //else
-            //{
-            //    Console.WriteLine("Filehash ok");
-            //}
         }
     }
 }
