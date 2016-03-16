@@ -33,8 +33,8 @@ namespace AzureChunkingMediaFileUploader
 
             var jobId = Guid.NewGuid().ToString();
 
-            LargeFileUploaderUtils.Log = Console.WriteLine;
-            await LargeFileUploaderUtils.UploadAsync(jobId, fileToUpload, connectionString, profileFileName);
+            ChunkingFileUploaderUtils.Log = Console.WriteLine;
+            await ChunkingFileUploaderUtils.UploadAsync(jobId, fileToUpload, connectionString, profileFileName);
         }
 
         private static void Help()

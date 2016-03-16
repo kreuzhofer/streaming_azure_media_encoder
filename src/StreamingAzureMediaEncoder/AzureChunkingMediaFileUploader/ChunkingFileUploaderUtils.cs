@@ -1,26 +1,19 @@
-﻿using System.Linq.Expressions;
-using System.Net;
-using System.Security.Permissions;
-using System.Security.Policy;
-using AzureChunkingMediaFileUploader;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Threading.Tasks;
+using LargeFileUploader;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
 
-namespace LargeFileUploader
+namespace AzureChunkingMediaFileUploader
 {
-    using System;
-    using System.Collections.Concurrent;
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Linq;
-    using System.Security.Cryptography;
-    using System.Text;
-    using System.Threading.Tasks;
-
-    using global::Microsoft.WindowsAzure.Storage;
-    using global::Microsoft.WindowsAzure.Storage.Blob;
-
-    public static class LargeFileUploaderUtils
+    public static class ChunkingFileUploaderUtils
     {
         public static Action<string> Log { get; set; }
         public static void UseConsoleForLogging() { Log = Console.Out.WriteLine; }
@@ -190,7 +183,7 @@ namespace LargeFileUploader
                 throw;
             }
 
-            await LargeFileUploaderUtils.ForEachAsync(
+            await ChunkingFileUploaderUtils.ForEachAsync(
                 source: missingBlobs,
                 parallelUploads: 4,
                 body: blockMetadata => uploadBlockAsync(blockMetadata, s));

@@ -193,7 +193,13 @@ namespace AzureChunkingMediaEncoder
                 Console.WriteLine("Aborted");
                 return;
             }
-            Console.WriteLine("Done");
+            Console.WriteLine("Encoding Done");
+
+            // upload file to target folder
+            var sasTargetFolderRef = new CloudBlobContainer(encodingTaskMetaData.TargetContainerUri, new StorageCredentials(encodingTaskMetaData.TargetContainerSas));
+            await LargeFileUploaderUtils.UploadAsync(new FileInfo(encodingTaskMetaData.TargetFilename), sasTargetFolderRef, (sender, i) => { });
+            File.Delete(encodingTaskMetaData.TargetFilename); // delete local file after upload
+            Console.WriteLine("Upload done");
         }
     }
 }
