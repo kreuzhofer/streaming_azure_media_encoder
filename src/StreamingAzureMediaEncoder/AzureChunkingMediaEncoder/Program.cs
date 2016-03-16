@@ -10,6 +10,9 @@ using System.Threading.Tasks;
 using AzureChunkingMediaFileUploader;
 using LargeFileUploader;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Auth;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
 
 namespace AzureChunkingMediaEncoder
@@ -19,12 +22,11 @@ namespace AzureChunkingMediaEncoder
         static void Main(string[] args)
         {
             var queueName = args[0];
-            var connectionString = args[1];
+            var queueSas = args[1];
+            Console.WriteLine(queueName);
+            Console.WriteLine(queueSas);
 
-            var storageAccount = CloudStorageAccount.Parse(connectionString);
-            var queueClient = storageAccount.CreateCloudQueueClient();
-            var queue = queueClient.GetQueueReference(queueName);
-            queue.CreateIfNotExists();
+            var queue = new CloudQueue(new Uri(queueName), new StorageCredentials(queueSas));
 
             while (true)
             {
@@ -34,105 +36,163 @@ namespace AzureChunkingMediaEncoder
                     Console.WriteLine(message.AsString);
                     queue.DeleteMessage(message);
 
-                    StartDownloadAndEncode(JsonConvert.DeserializeObject<UploadMetaData>(message.AsString), storageAccount);
+                    StartDownloadAndEncode(JsonConvert.DeserializeObject<EncodingTaskMetaData>(message.AsString));
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    Console.WriteLine("Waiting for task...");
+                    Console.WriteLine("Waiting for task... {0}", ex);
                     Thread.Sleep(1000);
                 }
             }
         }
 
-        private static async void StartDownloadAndEncode(UploadMetaData uploadMetaData, CloudStorageAccount storageAccount)
+        private static async void StartDownloadAndEncode(EncodingTaskMetaData encodingTaskMetaData)
         {
-            await StartDownloadAndEncodeAsync(uploadMetaData, storageAccount);
+            await StartDownloadAndEncodeAsync(encodingTaskMetaData);
         }
 
-        private static async Task StartDownloadAndEncodeAsync(UploadMetaData uploadMetaData, CloudStorageAccount storageAccount)
+        private static async Task StartDownloadAndEncodeAsync(EncodingTaskMetaData encodingTaskMetaData)
         {
-            var blobClient = storageAccount.CreateCloudBlobClient();
-            var container = blobClient.GetContainerReference(uploadMetaData.ContainerName);
-            container.CreateIfNotExists();
+            var sasContainerRef = new CloudBlobContainer(encodingTaskMetaData.SourceContainerUri, new StorageCredentials(encodingTaskMetaData.SourceContainerSas));
 
             // check if file exists and delete
-            if (File.Exists(uploadMetaData.TargetFilename))
+            if (File.Exists(encodingTaskMetaData.TargetFilename))
             {
-                File.Delete(uploadMetaData.TargetFilename);
+                File.Delete(encodingTaskMetaData.TargetFilename);
             }
 
             var inputPipeReady = new AutoResetEvent(false);
+            var inputPipeName = Guid.NewGuid() + encodingTaskMetaData.BlobName;
+            var cts = new CancellationTokenSource();
 
             // start named pipe server
             var inputPipeTask = Task.Factory.StartNew(async () =>
             {
-                var server = new NamedPipeServerStream(uploadMetaData.BlobName);
-                inputPipeReady.Set();
-                server.WaitForConnection();
-
-                var allBlobsInFile = Enumerable
-                    .Range(0, 1 + ((int) (uploadMetaData.Length/Constants.NumBytesPerChunk)))
-                    .Select(_ => new BlobMetadata(_, uploadMetaData.Length, Constants.NumBytesPerChunk))
-                    .Where(block => block.Length > 0)
-                    .ToList();
-                var existingBlobs = container.ListBlobs().Select(blob => new BlobMetadata(int.Parse(blob.Uri.Segments.Last().Split(Constants.SEPERATOR).Last()), uploadMetaData.Length, Constants.NumBytesPerChunk)).ToList();
-
-                for (int i = 0; i < allBlobsInFile.Count; i++)
+                try
                 {
-                    var metaData = allBlobsInFile[i];
+                    var server = new NamedPipeServerStream(inputPipeName);
+                    inputPipeReady.Set();
+                    server.WaitForConnection();
 
-                    while (existingBlobs.All(b => b.Id != i)) // wait for blob
+                    var allBlobsInFile = Enumerable
+                        .Range(0, 1 + ((int) (encodingTaskMetaData.Length/Constants.NumBytesPerChunk)))
+                        .Select(_ => new BlobMetadata(_, encodingTaskMetaData.Length, Constants.NumBytesPerChunk))
+                        .Where(block => block.Length > 0)
+                        .ToList();
+
+                    var existingBlobs =
+                        sasContainerRef.ListBlobs()
+                            .Select(
+                                blob =>
+                                    new BlobMetadata(
+                                        int.Parse(blob.Uri.Segments.Last().Split(Constants.SEPERATOR).Last()),
+                                        encodingTaskMetaData.Length, Constants.NumBytesPerChunk))
+                            .ToList();
+
+                    for (int i = 0; i < allBlobsInFile.Count; i++)
                     {
-                        existingBlobs = container.ListBlobs().Select(blob => new BlobMetadata(int.Parse(blob.Uri.Segments.Last().Split(Constants.SEPERATOR).Last()), uploadMetaData.Length, Constants.NumBytesPerChunk)).ToList();
-                        await Task.Delay(1000);
+                        var metaData = allBlobsInFile[i];
+
+                        var waitTimer = Stopwatch.StartNew();
+                        while (existingBlobs.All(b => b.Id != i)) // wait for blob
+                        {
+                            existingBlobs =
+                                sasContainerRef.ListBlobs()
+                                    .Select(
+                                        blob =>
+                                            new BlobMetadata(
+                                                int.Parse(blob.Uri.Segments.Last().Split(Constants.SEPERATOR).Last()),
+                                                encodingTaskMetaData.Length, Constants.NumBytesPerChunk))
+                                    .ToList();
+                            await Task.Delay(1000);
+
+                            // break if the next block does not arrive in certain time interval
+                            if (waitTimer.Elapsed >= TimeSpan.FromSeconds(30) || cts.IsCancellationRequested)
+                            {
+                                cts.Cancel();
+                                throw new Exception(String.Format("Aborting Task {0} of Job {1}",
+                                    encodingTaskMetaData.TaskId, encodingTaskMetaData.JobId));
+                            }
+                        }
+
+                        var fileName = encodingTaskMetaData.BlobName + Constants.SEPERATOR +
+                                       metaData.Id.ToString().PadLeft(Constants.PADDING, '0');
+                        var blobRef = sasContainerRef.GetBlobReference(fileName);
+
+                        var buffer = new byte[Constants.NumBytesPerChunk];
+                        blobRef.DownloadToByteArray(buffer, 0);
+
+                        await server.WriteAsync(buffer, 0, (int) metaData.Length);
+                        await server.FlushAsync();
                     }
-
-                    var fileName = uploadMetaData.BlobName + Constants.SEPERATOR +
-                                   metaData.Id.ToString().PadLeft(Constants.PADDING, '0');
-                    var blobRef = container.GetBlobReference(fileName);
-
-                    var buffer = new byte[Constants.NumBytesPerChunk];
-                    blobRef.DownloadToByteArray(buffer, 0);
-
-                    await server.WriteAsync(buffer, 0, (int)metaData.Length);
-                    await server.FlushAsync();
+                    server.Disconnect();
                 }
-                server.Disconnect();
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    throw;
+                }
             });
 
-            inputPipeReady.WaitOne();
-
-            var ffmpeg = new FileInfo("ffmpeg.exe");
-            string ffmpegArgs = @"-i \\.\pipe\{2} {0} {1}";
-            var ffmpegArgsFormatted = String.Format(ffmpegArgs, uploadMetaData.EncoderParameters, uploadMetaData.TargetFilename, uploadMetaData.BlobName);
-            var startInfo = new ProcessStartInfo()
+            var ffmpegTask = Task.Factory.StartNew(() =>
             {
-                UseShellExecute = false,
-                FileName = ffmpeg.ToString(),
-                Arguments = ffmpegArgsFormatted,
-                RedirectStandardInput = true,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true,
-            };
-            var process = new Process {StartInfo = startInfo, EnableRaisingEvents = true};
+                inputPipeReady.WaitOne();
 
-            process.OutputDataReceived += (sender, args) => { Console.WriteLine(args.Data); };
-            process.ErrorDataReceived += (sender, args) => { Console.WriteLine(args.Data); };
+                var ffmpeg = new FileInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ffmpeg.exe"));
+                string ffmpegArgs = @"-i \\.\pipe\{2} {0} {1}";
+                var ffmpegArgsFormatted = String.Format(ffmpegArgs, encodingTaskMetaData.EncoderParameters, encodingTaskMetaData.TargetFilename, inputPipeName);
+                var startInfo = new ProcessStartInfo()
+                {
+                    UseShellExecute = false,
+                    FileName = ffmpeg.ToString(),
+                    Arguments = ffmpegArgsFormatted,
+                    RedirectStandardInput = true,
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                };
+                var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
+
+                process.OutputDataReceived += (sender, args) => { Console.WriteLine(args.Data); };
+                process.ErrorDataReceived += (sender, args) => { Console.WriteLine(args.Data); };
+
+                try
+                {
+                    process.Start();
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    throw;
+                }
+
+                while (!cts.IsCancellationRequested)
+                {
+                    process.WaitForExit(1000);
+                    if (process.HasExited)
+                    {
+                        break;
+                    }
+                    if (cts.IsCancellationRequested)
+                    {
+                        process.Kill();
+                        process.Close();
+                        throw new Exception("ffmpeg process killed because of cancellation request");
+                    }
+                }
+                
+            });
 
             try
             {
-                process.Start();
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
+                Task.WaitAll(new[] { inputPipeTask, ffmpegTask }); // wait for all pipe tasks to complete
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine(ex.Message);
-                throw;
+                Console.WriteLine("Aborted");
+                return;
             }
-
-            process.WaitForExit();
-            Task.WaitAll(new[] {inputPipeTask}); // wait for all pipe tasks to complete
             Console.WriteLine("Done");
         }
     }

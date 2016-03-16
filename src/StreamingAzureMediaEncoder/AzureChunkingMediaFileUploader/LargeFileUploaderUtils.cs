@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using System.Net;
+using System.Security.Permissions;
 using System.Security.Policy;
 using AzureChunkingMediaFileUploader;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -25,33 +26,48 @@ namespace LargeFileUploader
         public static void UseConsoleForLogging() { Log = Console.Out.WriteLine; }
         const uint DEFAULT_PARALLELISM = 1;
 
-        public static Task<string> UploadAsync(string inputFile, string storageConnectionString, string containerName, string encoderParameters, string targetFilename, uint uploadParallelism = DEFAULT_PARALLELISM)
+        public static Task<List<EncodingTaskMetaData>> UploadAsync(string jobId, string inputFile, string storageConnectionString, string profileFileName, uint uploadParallelism = DEFAULT_PARALLELISM)
         {
-            var hash = FileHasher.MD5Hash(inputFile);
-            return (new FileInfo(inputFile)).UploadAsync(CloudStorageAccount.Parse(storageConnectionString), containerName, hash, encoderParameters, targetFilename, uploadParallelism);
+            return (new FileInfo(inputFile)).UploadAsync(jobId, CloudStorageAccount.Parse(storageConnectionString), profileFileName, uploadParallelism);
         }
 
-        public static Task<string> UploadAsync(this FileInfo file, CloudStorageAccount storageAccount, string containerName, string hash, string encoderParameters, string targetFilename, uint uploadParallelism = DEFAULT_PARALLELISM)
+        public static Task<List<EncodingTaskMetaData>> UploadAsync(this FileInfo file, string jobId, CloudStorageAccount storageAccount, string profileFileName, uint uploadParallelism = DEFAULT_PARALLELISM)
         {
             return UploadAsync(
+                jobId: jobId,
                 fetchLocalData: (offset, length) => file.GetFileContentAsync(offset, (int) length),
                 blobLength: file.Length,
                 storageAccount: storageAccount,
-                containerName: containerName,
                 blobName: file.Name,
-                hash: hash,
-                encoderParameters: encoderParameters,
-                targetFilename: targetFilename,
+                profileFileName: profileFileName,
                 uploadParallelism: uploadParallelism);
         }
 
-        public static async Task<string> UploadAsync(Func<long, long, Task<byte[]>> fetchLocalData, long blobLength,
-            CloudStorageAccount storageAccount, string containerName, string blobName, string hash, string encoderParameters,
-            string targetFilename, uint uploadParallelism = DEFAULT_PARALLELISM) 
+        public static async Task<List<EncodingTaskMetaData>> UploadAsync(string jobId, Func<long, long, Task<byte[]>> fetchLocalData, long blobLength,
+            CloudStorageAccount storageAccount, string blobName, string profileFileName, uint uploadParallelism = DEFAULT_PARALLELISM) 
         {
             var blobClient = storageAccount.CreateCloudBlobClient();
-            var container = blobClient.GetContainerReference(containerName);
-            await container.CreateIfNotExistsAsync();
+
+            // create the container
+            var sourceContainer = blobClient.GetContainerReference(Guid.NewGuid().ToString());
+            await sourceContainer.CreateIfNotExistsAsync();
+            // create a SAS to pass it to the client
+            var sourceContainerSas = sourceContainer.GetSharedAccessSignature(new SharedAccessBlobPolicy()
+            {
+                Permissions = SharedAccessBlobPermissions.List | SharedAccessBlobPermissions.Read,
+                SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddDays(1),
+            });
+            var targetContainer = blobClient.GetContainerReference(jobId);
+            await targetContainer.CreateIfNotExistsAsync();
+            // create a SAS to pass it to the client
+            var targetContainerSas = targetContainer.GetSharedAccessSignature(new SharedAccessBlobPolicy()
+            {
+                Permissions =
+                    SharedAccessBlobPermissions.List | SharedAccessBlobPermissions.Read |
+                    SharedAccessBlobPermissions.Add | SharedAccessBlobPermissions.Create |
+                    SharedAccessBlobPermissions.Delete | SharedAccessBlobPermissions.Write,
+                SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddDays(1),
+            });
 
             if (Constants.NumBytesPerChunk > Constants.MAXIMUM_UPLOAD_SIZE)
             {
@@ -70,7 +86,7 @@ namespace LargeFileUploader
 
             #region Which blocks are already uploaded
 
-            var existingBlobs = container.ListBlobs().Select(blob=> new BlobMetadata(int.Parse(blob.Uri.Segments.Last().Split(Constants.SEPERATOR).Last()), blobLength, Constants.NumBytesPerChunk)).ToList();
+            var existingBlobs = sourceContainer.ListBlobs().Select(blob=> new BlobMetadata(int.Parse(blob.Uri.Segments.Last().Split(Constants.SEPERATOR).Last()), blobLength, Constants.NumBytesPerChunk)).ToList();
             List<BlobMetadata> missingBlobs = null;
             try
             {
@@ -92,8 +108,7 @@ namespace LargeFileUploader
 
                 await ExecuteUntilSuccessAsync(async () =>
                 {
-                    var blockBlob =
-                        container.GetBlockBlobReference(blobName + Constants.SEPERATOR + block.Id.ToString().PadLeft(Constants.PADDING, '0'));
+                    var blockBlob = sourceContainer.GetBlockBlobReference(blobName + Constants.SEPERATOR + block.Id.ToString().PadLeft(Constants.PADDING, '0'));
                     await blockBlob.PutBlockAsync(
                         blockId: block.BlockId,
                         blockData: new MemoryStream(blockData, true),
@@ -113,22 +128,61 @@ namespace LargeFileUploader
 
             var s = new Statistics(missingBlobs.Sum(b => b.Length));
 
+            CloudQueue progressQueue;
+            var result = new List<EncodingTaskMetaData>();
             try
             {
                 // queue a new message to notifiy the downloaders about the new upload
                 var queueClient = storageAccount.CreateCloudQueueClient();
                 var queue = queueClient.GetQueueReference("uploadnotifications");
+                progressQueue = queueClient.GetQueueReference("progressqueue");
                 queue.CreateIfNotExists();
-                var metaData = new UploadMetaData()
+                progressQueue.CreateIfNotExists();
+                // get shared access signature to read from the queue
+                var jobQueueSas = queue.GetSharedAccessSignature(new SharedAccessQueuePolicy()
                 {
-                    BlobName = blobName,
-                    Length = blobLength,
-                    ContainerName = containerName,
-                    Hash = hash,
-                    EncoderParameters = encoderParameters,
-                    TargetFilename = targetFilename,
-                };
-                queue.AddMessage(new CloudQueueMessage(JsonConvert.SerializeObject(metaData)));
+                    Permissions = SharedAccessQueuePermissions.ProcessMessages |
+                                  SharedAccessQueuePermissions.Read |
+                                  SharedAccessQueuePermissions.Update,
+                    SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddDays(1)
+                });
+                var progressQueueSas = progressQueue.GetSharedAccessSignature(new SharedAccessQueuePolicy()
+                {
+                    Permissions = SharedAccessQueuePermissions.ProcessMessages |
+                                  SharedAccessQueuePermissions.Read |
+                                  SharedAccessQueuePermissions.Update |
+                                  SharedAccessQueuePermissions.Add,
+                    SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddDays(1)
+                });
+
+                // read profile and generate tasks
+                var profileRawData = File.ReadAllText(profileFileName);
+                dynamic profile = JsonConvert.DeserializeObject(profileRawData);
+                foreach (var rendition in profile.renditions)
+                {
+                    string ffmpegParameters = rendition.ffmpeg;
+                    string suffix = rendition.suffix;
+
+                    var metaData = new EncodingTaskMetaData()
+                    {
+                        JobId = jobId,
+                        TaskId = Guid.NewGuid().ToString(),
+                        BlobName = blobName,
+                        Length = blobLength,
+                        SourceContainerSas = sourceContainerSas,
+                        SourceContainerUri = sourceContainer.Uri,
+                        TargetContainerSas = targetContainerSas,
+                        TargetContainerUri = targetContainer.Uri,
+                        JobQueueSas = jobQueueSas,
+                        JobQueueUri = queue.Uri,
+                        ProgressQueueSas = progressQueueSas,
+                        ProgressQueueUri = progressQueue.Uri,
+                        EncoderParameters = ffmpegParameters,
+                        TargetFilename = blobName+suffix,
+                    };
+                    result.Add(metaData);
+                    queue.AddMessage(new CloudQueueMessage(JsonConvert.SerializeObject(metaData)));
+                }
             }
             catch (Exception ex)
             {
@@ -141,9 +195,9 @@ namespace LargeFileUploader
                 parallelUploads: 4,
                 body: blockMetadata => uploadBlockAsync(blockMetadata, s));
 
-            log("PutBlockList succeeded, finished upload to {0}", containerName);
+            log("PutBlockList succeeded, finished upload to {0}", targetContainer.Uri);
 
-            return blobName;
+            return result;
         }
 
         internal static void log(string format, params object[] args)

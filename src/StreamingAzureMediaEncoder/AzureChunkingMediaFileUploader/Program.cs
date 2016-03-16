@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -12,7 +13,7 @@ namespace AzureChunkingMediaFileUploader
     {
         static int Main(string[] args)
         {
-            if(args.Length<5)
+            if(args.Length<3)
             {
                 Help();
                 return -1;
@@ -27,13 +28,13 @@ namespace AzureChunkingMediaFileUploader
         private static async void StartUpload(string[] args)
         {
             var fileToUpload = args[0];
-            var containerName = args[1];
-            var connectionString = args[2];
-            var encoderParameters = args[3];
-            var targetFilename = args[4];
+            var connectionString = args[1];
+            var profileFileName = args[2];
+
+            var jobId = Guid.NewGuid().ToString();
 
             LargeFileUploaderUtils.Log = Console.WriteLine;
-            await LargeFileUploaderUtils.UploadAsync(fileToUpload, connectionString, containerName, encoderParameters, targetFilename);
+            await LargeFileUploaderUtils.UploadAsync(jobId, fileToUpload, connectionString, profileFileName);
         }
 
         private static void Help()

@@ -9,7 +9,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureLargeFileUploader", "A
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureChunkingMediaEncoder", "AzureChunkingMediaEncoder\AzureChunkingMediaEncoder.csproj", "{45A2E3BD-6D9E-4830-974F-623C8D55D3F2}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Shared", "Shared\Shared.shproj", "{A9BC3CFB-5A74-43CB-A37F-4B8AF2C880D2}"
+EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		Shared\Shared.projitems*{a9bc3cfb-5a74-43cb-a37f-4b8af2c880d2}*SharedItemsImports = 13
+		Shared\Shared.projitems*{eba2e68e-b58f-404d-8b0e-9af6601cf8f7}*SharedItemsImports = 4
+		Shared\Shared.projitems*{45a2e3bd-6d9e-4830-974f-623c8d55d3f2}*SharedItemsImports = 4
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
