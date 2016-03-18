@@ -11,6 +11,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureChunkingMediaEncoder",
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Shared", "Shared\Shared.shproj", "{A9BC3CFB-5A74-43CB-A37F-4B8AF2C880D2}"
 EndProject
+Project("{151D2E53-A2C4-4D7D-83FE-D05416EBD58E}") = "ARM", "ARM\ARM.deployproj", "{19B623F2-4263-433A-A1C5-F6622F5D077C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Agent", "Agent\Agent.csproj", "{368895C8-6049-49C4-99BE-D423B6DE1716}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		Shared\Shared.projitems*{a9bc3cfb-5a74-43cb-a37f-4b8af2c880d2}*SharedItemsImports = 13
@@ -34,6 +38,14 @@ Global
 		{45A2E3BD-6D9E-4830-974F-623C8D55D3F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{45A2E3BD-6D9E-4830-974F-623C8D55D3F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{45A2E3BD-6D9E-4830-974F-623C8D55D3F2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{19B623F2-4263-433A-A1C5-F6622F5D077C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19B623F2-4263-433A-A1C5-F6622F5D077C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19B623F2-4263-433A-A1C5-F6622F5D077C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19B623F2-4263-433A-A1C5-F6622F5D077C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{368895C8-6049-49C4-99BE-D423B6DE1716}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{368895C8-6049-49C4-99BE-D423B6DE1716}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{368895C8-6049-49C4-99BE-D423B6DE1716}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{368895C8-6049-49C4-99BE-D423B6DE1716}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
