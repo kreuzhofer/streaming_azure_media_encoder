@@ -15,6 +15,12 @@ Project("{151D2E53-A2C4-4D7D-83FE-D05416EBD58E}") = "ARM", "ARM\ARM.deployproj",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Agent", "Agent\Agent.csproj", "{368895C8-6049-49C4-99BE-D423B6DE1716}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{9618E76D-0249-4996-A1B6-9CFF6F06A885}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\build.cake = ..\..\build.cake
+		..\..\tools.cake = ..\..\tools.cake
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		Shared\Shared.projitems*{a9bc3cfb-5a74-43cb-a37f-4b8af2c880d2}*SharedItemsImports = 13
