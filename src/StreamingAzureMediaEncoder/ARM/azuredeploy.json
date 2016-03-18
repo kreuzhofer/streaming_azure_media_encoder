@@ -29,7 +29,8 @@
         }
     },
     "variables": {
-        "templateSource": "https://raw.githubusercontent.com/chgeuer/streaming_azure_media_encoder/master/src/StreamingAzureMediaEncoder/ARM/",
+        "githubUser": "chgeuer",
+        "templateSource": "[concat('https://raw.githubusercontent.com/', variables('githubUser'), '/streaming_azure_media_encoder/master/src/StreamingAzureMediaEncoder/ARM/')]",
         "apiVersions": {
             "storageAccounts": "2015-06-15",
             "networkSecurityGroups": "2015-06-15",

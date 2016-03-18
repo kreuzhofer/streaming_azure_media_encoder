@@ -11,7 +11,7 @@ var artefactStorageAccount = "chgeuerartefactswe";
 var artefactStorageContainer = "artefacts";
 
 var deploymentLocation = "northeurope";
-var uniqueName = "ffmpeg";
+var uniqueName = "ffmpeg2";
 var deploymentResourceGroup = uniqueName;
 var deploymentParameters = new Dictionary<string, object> {
     { "adminUsername", "chgeuer" }, 
@@ -129,6 +129,6 @@ Task("DeployCompute")
     });
 
 Task("Default")
-  .IsDependentOn("Package");
+  .IsDependentOn("DeployCompute");
 
 RunTarget(target);
