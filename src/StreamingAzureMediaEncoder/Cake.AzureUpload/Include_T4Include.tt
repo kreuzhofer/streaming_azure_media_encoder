@@ -1,0 +1,9 @@
+<#
+    RootPath    = @"";
+    Namespace   = "notinuse";
+    Includes    = new []
+    {
+        Include (@"https://raw.githubusercontent.com/chgeuer/AzureLargeFileUploader/master/LargeFileUploaderUtils.cs", noOuterNamespace: true) 
+    };
+#>
+<#@ include file="$(SolutionDir)\packages\T4Include.1.1.4\T4\IncludeWebFile.ttinclude" #>
