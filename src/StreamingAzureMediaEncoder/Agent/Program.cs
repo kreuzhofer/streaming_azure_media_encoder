@@ -119,7 +119,7 @@
 
         public void Start()
         {
-            logger.Debug($"Starting");
+            logger.Debug($"Starting {ConnectionString}");
             var myThread = new Thread(new ThreadStart(Run)) { IsBackground = true };
             myThread.Start();
         }
