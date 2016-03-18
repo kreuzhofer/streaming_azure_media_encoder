@@ -25,12 +25,11 @@
         },
         "serviceBits": {
             "type": "string",
-            "defaultValue": "https://nacamar17757.blob.core.windows.net/public/build.zip",
-            "metadata": { "description": "URL of the package" }
+            "metadata": { "description": "URL of the package, like https://artefacts.blob.core.windows.net/public/build.zip" }
         }
     },
     "variables": {
-        "templateSource": "https://raw.githubusercontent.com/chgeuer/AzureFilesToBlobs/master/ARM/",
+        "templateSource": "https://raw.githubusercontent.com/chgeuer/streaming_azure_media_encoder/master/src/StreamingAzureMediaEncoder/ARM/",
         "apiVersions": {
             "storageAccounts": "2015-06-15",
             "networkSecurityGroups": "2015-06-15",
