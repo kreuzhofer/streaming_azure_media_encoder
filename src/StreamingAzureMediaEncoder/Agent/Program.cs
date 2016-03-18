@@ -91,14 +91,14 @@
 
             HostFactory.Run(x =>
             {
-                x.Service<CopyService>(instance => instance
-                        .ConstructUsing(() => new CopyService("hallo"))
+                x.Service<FFMPEGService>(instance => instance
+                        .ConstructUsing(() => new FFMPEGService(AzureConnectionString))
                         .WhenStarted(s => s.Start())
                         .WhenStopped(s => s.Stop())
                     );
-                x.SetDisplayName("Azure Files Replicator");
+                x.SetDisplayName("Azure FFMPEG Encoder");
                 x.SetServiceName(ServiceName);
-                x.SetDescription("Replicate data from Azure Files to Azure Blob Storage.");
+                x.SetDescription("Azure FFMPEG Streaming Blob Encoding.");
                 x.StartAutomatically();
                 x.RunAsLocalService();
                 x.UseNLog();
@@ -106,13 +106,13 @@
         }
     }
 
-    public class CopyService
+    public class FFMPEGService
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
         
         public string ConnectionString { get; private set; }
 
-        public CopyService(string connectionString)
+        public FFMPEGService(string connectionString)
         {
             this.ConnectionString = connectionString;
         }
