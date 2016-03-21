@@ -137,7 +137,7 @@ namespace AzureChunkingMediaFileUploader
                     Permissions = SharedAccessQueuePermissions.ProcessMessages |
                                   SharedAccessQueuePermissions.Read |
                                   SharedAccessQueuePermissions.Update,
-                    SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddDays(1)
+                    SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddYears(99)
                 });
                 var progressQueueSas = progressQueue.GetSharedAccessSignature(new SharedAccessQueuePolicy()
                 {
