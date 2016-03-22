@@ -14,9 +14,12 @@ namespace LargeFileUploader
         public Uri SourceContainerUri { get; set; }
         public string JobQueueSas { get; set; }
         public Uri JobQueueUri { get; set; }
-        public string ProgressQueueSas { get; set; }
-        public Uri ProgressQueueUri { get; set; }
         public string TargetContainerSas { get; set; }
         public Uri TargetContainerUri { get; set; }
+        public string TableSas { get; set; }
+        public Uri TableUri { get; set; }
+        public int EncoderTimeout { get; set; }
+
+        public int RenditionIndex { get; set; }
     }
 }

@@ -3,15 +3,35 @@
     "renditions": [
         {
             "ffmpeg": "-vcodec h264 -s 1280x720 -vb 6500k",
-            "suffix": "1280x720.mp4"
+            "suffix": "_1280x720.mp4"
         },
         {
             "ffmpeg": "-vcodec h264 -s 640x360 -vb 1500k",
-            "suffix": "640x360.mp4"
+            "suffix": "_640x360.mp4"
         },
         {
             "ffmpeg": "-vcodec h264 -s 320x240 -vb 250k",
-            "suffix": "320x240.mp4"
+            "suffix": "_320x240.mp4"
+        },
+        {
+            "ffmpeg": "-vcodec h264 -s 320x240 -vb 250k",
+            "suffix": "_320x240_2.mp4"
+        },
+        {
+            "ffmpeg": "-vcodec h264 -s 320x240 -vb 250k",
+            "suffix": "_320x240_3.mp4"
+        },
+        {
+            "ffmpeg": "-vcodec h264 -s 320x240 -vb 250k",
+            "suffix": "_320x240_4.mp4"
+        },
+        {
+            "ffmpeg": "-vcodec h264 -s 320x240 -vb 250k",
+            "suffix": "_320x240_5.mp4"
+        },
+        {
+            "ffmpeg": "-vcodec h264 -s 320x240 -vb 250k",
+            "suffix": "_320x240_6.mp4"
         }
     ]
 }

@@ -73,6 +73,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BlobMetadata.cs" />
+    <Compile Include="DownloadAndEncodingTask.cs" />
     <Compile Include="LargeFileUploaderUtils.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

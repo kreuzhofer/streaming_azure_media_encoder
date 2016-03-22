@@ -9,6 +9,7 @@ using LargeFileUploader;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
 
 namespace AzureChunkingMediaFileUploader
@@ -128,9 +129,7 @@ namespace AzureChunkingMediaFileUploader
                 // queue a new message to notifiy the downloaders about the new upload
                 var queueClient = storageAccount.CreateCloudQueueClient();
                 var queue = queueClient.GetQueueReference("uploadnotifications");
-                progressQueue = queueClient.GetQueueReference("progressqueue");
                 queue.CreateIfNotExists();
-                progressQueue.CreateIfNotExists();
                 // get shared access signature to read from the queue
                 var jobQueueSas = queue.GetSharedAccessSignature(new SharedAccessQueuePolicy()
                 {
@@ -139,18 +138,22 @@ namespace AzureChunkingMediaFileUploader
                                   SharedAccessQueuePermissions.Update,
                     SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddYears(99)
                 });
-                var progressQueueSas = progressQueue.GetSharedAccessSignature(new SharedAccessQueuePolicy()
-                {
-                    Permissions = SharedAccessQueuePermissions.ProcessMessages |
-                                  SharedAccessQueuePermissions.Read |
-                                  SharedAccessQueuePermissions.Update |
-                                  SharedAccessQueuePermissions.Add,
-                    SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddDays(1)
-                });
+                // create table and access rights
+                var tableClient = storageAccount.CreateCloudTableClient();
+                var tableRef = tableClient.GetTableReference("encodingTasks");
+                tableRef.CreateIfNotExists();
+                var tableSas = tableRef.GetSharedAccessSignature(new SharedAccessTablePolicy()
+                    {
+                        Permissions =
+                            SharedAccessTablePermissions.Add | SharedAccessTablePermissions.Delete |
+                            SharedAccessTablePermissions.Query | SharedAccessTablePermissions.Update,
+                        SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddDays(1)
+                    });
 
                 // read profile and generate tasks
                 var profileRawData = File.ReadAllText(profileFileName);
                 dynamic profile = JsonConvert.DeserializeObject(profileRawData);
+                var index = 0;
                 foreach (var rendition in profile.renditions)
                 {
                     string ffmpegParameters = rendition.ffmpeg;
@@ -168,13 +171,16 @@ namespace AzureChunkingMediaFileUploader
                         TargetContainerUri = targetContainer.Uri,
                         JobQueueSas = jobQueueSas,
                         JobQueueUri = queue.Uri,
-                        ProgressQueueSas = progressQueueSas,
-                        ProgressQueueUri = progressQueue.Uri,
                         EncoderParameters = ffmpegParameters,
                         TargetFilename = blobName+suffix,
+                        TableSas = tableSas,
+                        TableUri = tableRef.Uri,
+                        EncoderTimeout = Constants.ENCODER_TIMEOUT,
+                        RenditionIndex = index
                     };
                     result.Add(metaData);
                     queue.AddMessage(new CloudQueueMessage(JsonConvert.SerializeObject(metaData)));
+                    index++;
                 }
             }
             catch (Exception ex)

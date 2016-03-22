@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)Constants.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)EncodingTaskEntity.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)EncodingTaskMetaData.cs" />
   </ItemGroup>
 </Project>
