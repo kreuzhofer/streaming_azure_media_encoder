@@ -50,9 +50,9 @@ namespace AzureChunkingMediaEncoder
             var tableRef = new CloudTable(encodingTaskMetaData.TableUri, new StorageCredentials(encodingTaskMetaData.TableSas));
             var task = new EncodingTaskEntity(encodingTaskMetaData.JobId, encodingTaskMetaData.TaskId);
             task.Status = "RUNNING";
-            task.StartTime = DateTime.UtcNow;
-            task.EncoderParameters = encodingTaskMetaData.EncoderParameters;
-            task.RenditionIndex = encodingTaskMetaData.RenditionIndex;
+            task.TaskMetaData.StartTime = DateTime.UtcNow;
+            task.TaskMetaData.EncoderParameters = encodingTaskMetaData.EncoderParameters;
+            task.TaskMetaData.RenditionIndex = encodingTaskMetaData.RenditionIndex;
             var insertOperation = TableOperation.Insert(task);
             tableRef.Execute(insertOperation);
 
@@ -143,7 +143,7 @@ namespace AzureChunkingMediaEncoder
                     Console.WriteLine(ex.Message);
                     throw;
                 }
-            });
+            }, mainCancellationToken);
 
             var ffmpegTask = Task.Factory.StartNew(() =>
             {
@@ -206,7 +206,7 @@ namespace AzureChunkingMediaEncoder
                     }
                 }
                 
-            });
+            }, mainCancellationToken);
 
             try
             {
@@ -216,9 +216,9 @@ namespace AzureChunkingMediaEncoder
             {
                 // Status is ABORTED
                 task.Status = "ABORTED";
-                task.FfmpegLog = logFfmpeg.ToString();
-                task.EndTime = DateTime.UtcNow;
-                task.Duration = watch.Elapsed;
+                task.TaskMetaData.FfmpegLog = logFfmpeg.ToString();
+                task.TaskMetaData.EndTime = DateTime.UtcNow;
+                task.TaskMetaData.Duration = watch.Elapsed;
                 var updateOperation2 = TableOperation.Replace(task);
                 tableRef.Execute(updateOperation2);
 
@@ -233,9 +233,9 @@ namespace AzureChunkingMediaEncoder
             {
                 // Status is ABORTED
                 task.Status = "ABORTED";
-                task.FfmpegLog = logFfmpeg.ToString();
-                task.EndTime = DateTime.UtcNow;
-                task.Duration = watch.Elapsed;
+                task.TaskMetaData.FfmpegLog = logFfmpeg.ToString();
+                task.TaskMetaData.EndTime = DateTime.UtcNow;
+                task.TaskMetaData.Duration = watch.Elapsed;
                 var updateOperation2 = TableOperation.Replace(task);
                 tableRef.Execute(updateOperation2);
                 return;
@@ -256,8 +256,8 @@ namespace AzureChunkingMediaEncoder
 
             // Update status to DONE
             task.Status = "DONE";
-            task.EndTime = DateTime.UtcNow;
-            task.Duration = watch.Elapsed;
+            task.TaskMetaData.EndTime = DateTime.UtcNow;
+            task.TaskMetaData.Duration = watch.Elapsed;
             var updateOperation3 = TableOperation.Replace(task);
             tableRef.Execute(updateOperation3);
         }
