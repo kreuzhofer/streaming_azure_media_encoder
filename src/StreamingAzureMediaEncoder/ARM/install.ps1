@@ -1,7 +1,8 @@
 Param(
   [string]$serviceBits,
   [string]$storageAccountName,
-  [string]$storageAccountKey
+  [string]$storageAccountKey,
+  [string]$encodingThreads
 )
 
 $localFile = "build.zip"
@@ -19,6 +20,7 @@ Add-Type -Assembly "System.IO.Compression.Filesystem"
 
 New-Item -Path HKLM:\Software\Azure\LocalService -Force
 Set-ItemProperty -Path HKLM:\Software\Azure\LocalService -Name "StorageAccount" -Value "DefaultEndpointsProtocol=https;AccountName=$($storageAccountName);AccountKey=$($storageAccountKey)"
+Set-ItemProperty -Path HKLM:\Software\Azure\LocalService -Name "EncodingThreads" -Value "$($encodingThreads)"
 
 & "$($serviceFolder)\Agent.exe" install --NetworkService 
 & "$($serviceFolder)\Agent.exe" start

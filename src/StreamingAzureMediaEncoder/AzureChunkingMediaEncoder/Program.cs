@@ -23,19 +23,15 @@ namespace AzureChunkingMediaEncoder
     {
         static void Main(string[] args)
         {
-            var queueName = args[0];
-            var queueSas = args[1];
-
-            Console.WriteLine(queueName);
-            Console.WriteLine(queueSas);
+            var storageAccount = args[0];
 
             var cts = new CancellationTokenSource();
             var ct = cts.Token;
 
-            var task1 = Task.Factory.StartNew(()=> { new DownloadAndEncodingTask().Start(queueName, queueSas, ct); }, ct);
-            var task2 = Task.Factory.StartNew(() => { new DownloadAndEncodingTask().Start(queueName, queueSas, ct); }, ct);
-            var task3 = Task.Factory.StartNew(() => { new DownloadAndEncodingTask().Start(queueName, queueSas, ct); }, ct);
-            var task4 = Task.Factory.StartNew(() => { new DownloadAndEncodingTask().Start(queueName, queueSas, ct); }, ct);
+            var task1 = Task.Factory.StartNew(()=> { new DownloadAndEncodingTask().Start(storageAccount, ct); }, ct);
+            var task2 = Task.Factory.StartNew(() => { new DownloadAndEncodingTask().Start(storageAccount, ct); }, ct);
+            var task3 = Task.Factory.StartNew(() => { new DownloadAndEncodingTask().Start(storageAccount, ct); }, ct);
+            var task4 = Task.Factory.StartNew(() => { new DownloadAndEncodingTask().Start(storageAccount, ct); }, ct);
             Task.WaitAll(task1, task2, task3, task4);
         }
     }

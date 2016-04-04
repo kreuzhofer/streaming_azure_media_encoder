@@ -46,9 +46,8 @@ namespace Agent
             return val;
         }
 
-        public static string QueueUri { get { return Get("QueueUri"); } }
-        public static string QueueSas { get { return Get("QueueSas"); } }
-        public static string NumberOfWorkers { get { return Get("NumberOfWorkers"); } }
+        public static string StorageAccount { get { return Get("StorageAccount"); } }
+        public static string EncodingThreads { get { return Get("EncodingThreads"); } }
 
         static LoggingConfiguration CreateLoggingConfiguration()
         {
@@ -96,7 +95,7 @@ namespace Agent
             HostFactory.Run(x =>
             {
                 x.Service<FFMPEGService>(instance => instance
-                        .ConstructUsing(() => new FFMPEGService(QueueUri, QueueSas, NumberOfWorkers))
+                        .ConstructUsing(() => new FFMPEGService(StorageAccount, EncodingThreads))
                         .WhenStarted(s => s.Start())
                         .WhenStopped(s => s.Stop())
                     );
@@ -114,18 +113,15 @@ namespace Agent
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
         
-        public FFMPEGService(string queueName, string queueSas, string numberOfWorkers)
+        public FFMPEGService(string storageAccount, string encodingThreads)
         {
-            this.QueueName = queueName;
-            this.QueueSas = queueSas;
-            this.NumberOfWorkers = int.Parse(numberOfWorkers);
+            this.StorageAccount = storageAccount;
+            this.EncodingThreads = int.Parse(encodingThreads);
         }
 
-        public int NumberOfWorkers { get; set; }
+        public string StorageAccount { get; set; }
 
-        public string QueueSas { get; set; }
-
-        public string QueueName { get; set; }
+        public int EncodingThreads { get; set; }
 
         public void Start()
         {
@@ -147,9 +143,9 @@ namespace Agent
             {
                 logger.Debug($"Starting workers...");
                 var workersList = new List<Task>();
-                for (int i = 0; i < NumberOfWorkers; i++)
+                for (int i = 0; i < EncodingThreads; i++)
                 {
-                    var task = Task.Factory.StartNew(() => { new DownloadAndEncodingTask().Start(QueueName, QueueSas, cancellationToken); }, cancellationToken);
+                    var task = Task.Factory.StartNew(() => { new DownloadAndEncodingTask().Start(StorageAccount, cancellationToken); }, cancellationToken);
                     workersList.Add(task);
                 }
                 Task.WaitAll(workersList.ToArray());

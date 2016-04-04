@@ -13,5 +13,6 @@ namespace AzureChunkingMediaFileUploader
         public const int kB = 1024;
         public const int MB = kB * 1024;
         public const long GB = MB * 1024;
+        public const string QueueName = "uploadnotifications";
     }
 }

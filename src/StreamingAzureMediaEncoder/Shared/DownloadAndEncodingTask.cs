@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AzureChunkingMediaFileUploader;
 using LargeFileUploader;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -19,9 +20,11 @@ namespace AzureChunkingMediaEncoder
 {
     public class DownloadAndEncodingTask
     {
-        public void Start(string queueUri, string queueSas, CancellationToken ct)
+        public void Start(string storageAccount, CancellationToken ct)
         {
-            var queue = new CloudQueue(new Uri(queueUri), new StorageCredentials(queueSas));
+            var storageAccountClient = CloudStorageAccount.Parse(storageAccount);
+            var queueClient = storageAccountClient.CreateCloudQueueClient();
+            var queue = queueClient.GetQueueReference(Constants.QueueName);
 
             while (!ct.IsCancellationRequested)
             {

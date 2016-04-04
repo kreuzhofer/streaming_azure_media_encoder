@@ -86,7 +86,10 @@
                 }
             },
             "vmStorageAccountContainerName": "vhds",
-            "worker": { "size": "Standard_D1_v2" },
+            "worker": {
+                "size": "Standard_D1_v2",
+                "encodingThreads": "4"
+            },
             "jumphost": { "size": "Standard_A1" }
         }
     },
@@ -355,7 +358,7 @@
                                     "autoUpgradeMinorVersion": true,
                                     "settings": {
                                         "fileUris": [ "[concat(variables('templateSource'), 'install.ps1')]" ],
-                                        "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -file ', 'install.ps1', ' ', '-serviceBits', ' ', parameters('serviceBits'), ' ', '-storageAccountName', ' ', variables('storageAccountNames').jobqueue, ' ',  '-storageAccountKey', ' ', listKeys(variables('storageAccountNames').jobqueue, variables('apiVersions').storageAccounts).key1)]"
+                                        "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -file ', 'install.ps1', ' ', '-serviceBits', ' ', parameters('serviceBits'), ' ', '-storageAccountName', ' ', variables('storageAccountNames').jobqueue, ' ',  '-storageAccountKey', ' ', listKeys(variables('storageAccountNames').jobqueue, variables('apiVersions').storageAccounts).key1, '-encodingThreads',' ', variables('vm').worker.encodingThreads)]"
                                     }
                                 }
                             }

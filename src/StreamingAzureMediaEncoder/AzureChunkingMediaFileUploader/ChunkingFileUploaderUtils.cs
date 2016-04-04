@@ -128,7 +128,7 @@ namespace AzureChunkingMediaFileUploader
             {
                 // queue a new message to notifiy the downloaders about the new upload
                 var queueClient = storageAccount.CreateCloudQueueClient();
-                var queue = queueClient.GetQueueReference("uploadnotifications");
+                var queue = queueClient.GetQueueReference(Constants.QueueName);
                 queue.CreateIfNotExists();
                 // get shared access signature to read from the queue
                 var jobQueueSas = queue.GetSharedAccessSignature(new SharedAccessQueuePolicy()
