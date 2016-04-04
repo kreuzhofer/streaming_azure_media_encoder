@@ -72,7 +72,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BlobMetadata.cs" />
     <Compile Include="FileHasher.cs" />
     <Compile Include="ChunkingFileUploaderUtils.cs" />
     <Compile Include="Program.cs" />

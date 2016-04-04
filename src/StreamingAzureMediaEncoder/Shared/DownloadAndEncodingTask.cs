@@ -19,9 +19,9 @@ namespace AzureChunkingMediaEncoder
 {
     public class DownloadAndEncodingTask
     {
-        public void Start(string queueName, string queueSas, CancellationToken ct)
+        public void Start(string queueUri, string queueSas, CancellationToken ct)
         {
-            var queue = new CloudQueue(new Uri(queueName), new StorageCredentials(queueSas));
+            var queue = new CloudQueue(new Uri(queueUri), new StorageCredentials(queueSas));
 
             while (!ct.IsCancellationRequested)
             {

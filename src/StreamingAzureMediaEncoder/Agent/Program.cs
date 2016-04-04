@@ -1,4 +1,6 @@
-﻿namespace Agent
+﻿using AzureChunkingMediaEncoder;
+
+namespace Agent
 {
     using System;
     using System.Collections.Generic;
@@ -12,7 +14,7 @@
 
     class Program
     {
-        const string ServiceName = "AzureFilesReplicator";
+        const string ServiceName = "AzureFFMPEGEncoder";
 
         private static string Get(string key)
         {
@@ -44,7 +46,9 @@
             return val;
         }
 
-        public static string AzureConnectionString { get { return Get("StorageAccount"); } }
+        public static string QueueUri { get { return Get("QueueUri"); } }
+        public static string QueueSas { get { return Get("QueueSas"); } }
+        public static string NumberOfWorkers { get { return Get("NumberOfWorkers"); } }
 
         static LoggingConfiguration CreateLoggingConfiguration()
         {
@@ -92,7 +96,7 @@
             HostFactory.Run(x =>
             {
                 x.Service<FFMPEGService>(instance => instance
-                        .ConstructUsing(() => new FFMPEGService(AzureConnectionString))
+                        .ConstructUsing(() => new FFMPEGService(QueueUri, QueueSas, NumberOfWorkers))
                         .WhenStarted(s => s.Start())
                         .WhenStopped(s => s.Stop())
                     );
@@ -110,16 +114,22 @@
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
         
-        public string ConnectionString { get; private set; }
-
-        public FFMPEGService(string connectionString)
+        public FFMPEGService(string queueName, string queueSas, string numberOfWorkers)
         {
-            this.ConnectionString = connectionString;
+            this.QueueName = queueName;
+            this.QueueSas = queueSas;
+            this.NumberOfWorkers = int.Parse(numberOfWorkers);
         }
+
+        public int NumberOfWorkers { get; set; }
+
+        public string QueueSas { get; set; }
+
+        public string QueueName { get; set; }
 
         public void Start()
         {
-            logger.Debug($"Starting {ConnectionString}");
+            logger.Debug($"Starting worker...");
             var myThread = new Thread(new ThreadStart(Run)) { IsBackground = true };
             myThread.Start();
         }
@@ -135,8 +145,14 @@
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                logger.Debug($"Running");
-                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+                logger.Debug($"Starting workers...");
+                var workersList = new List<Task>();
+                for (int i = 0; i < NumberOfWorkers; i++)
+                {
+                    var task = Task.Factory.StartNew(() => { new DownloadAndEncodingTask().Start(QueueName, QueueSas, cancellationToken); }, cancellationToken);
+                    workersList.Add(task);
+                }
+                Task.WaitAll(workersList.ToArray());
             }
             logger.Debug($"Stopped");
         }

@@ -9,8 +9,11 @@
     <Import_RootNamespace>Shared</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)BlobMetadata.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Constants.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)DownloadAndEncodingTask.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)EncodingTaskEntity.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)EncodingTaskMetaData.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)LargeFileUploaderUtils.cs" />
   </ItemGroup>
 </Project>
