@@ -358,7 +358,7 @@
                                     "autoUpgradeMinorVersion": true,
                                     "settings": {
                                         "fileUris": [ "[concat(variables('templateSource'), 'install.ps1')]" ],
-                                        "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -file ', 'install.ps1', ' ', '-serviceBits', ' ', parameters('serviceBits'), ' ', '-storageAccountName', ' ', variables('storageAccountNames').jobqueue, ' ',  '-storageAccountKey', ' ', listKeys(variables('storageAccountNames').jobqueue, variables('apiVersions').storageAccounts).key1, '-encodingThreads',' ', variables('vm').worker.encodingThreads)]"
+                                        "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -file ', 'install.ps1', ' ', '-serviceBits', ' ', parameters('serviceBits'), ' ', '-storageAccountName', ' ', variables('storageAccountNames').jobqueue, ' ',  '-storageAccountKey', ' ', listKeys(variables('storageAccountNames').jobqueue, variables('apiVersions').storageAccounts).key1, ' ', -encodingThreads',' ', variables('vm').worker.encodingThreads)]"
                                     }
                                 }
                             }

@@ -112,7 +112,7 @@ namespace notinuse.Include
     static partial class MetaData
     {
         public const string RootPath        = @"";
-        public const string IncludeDate     = @"2016-03-15T16:47:42";
+        public const string IncludeDate     = @"2016-04-04T16:21:51";
 
         public const string Include_0       = @"https://raw.githubusercontent.com/chgeuer/NLog.AzureAppendBlob/master/NLog.AzureAppendBlob/AzureAppendBlobTarget.cs";
     }
