@@ -29,7 +29,7 @@
         }
     },
     "variables": {
-        "githubUser": "chgeuer",
+        "githubUser": "kreuzhofer",
         "templateSource": "[concat('https://raw.githubusercontent.com/', variables('githubUser'), '/streaming_azure_media_encoder/master/src/StreamingAzureMediaEncoder/ARM/')]",
         "apiVersions": {
             "storageAccounts": "2015-06-15",
