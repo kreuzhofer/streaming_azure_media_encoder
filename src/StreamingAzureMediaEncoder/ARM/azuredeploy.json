@@ -26,6 +26,14 @@
         "serviceBits": {
             "type": "string",
             "metadata": { "description": "URL of the package, like https://artefacts.blob.core.windows.net/public/build.zip" }
+        },
+        "targetStorageAccountName": {
+            "type": "string",
+            "metadata": { "description": "Name for the target storage account" }
+        },
+        "targetStorageAccountKey": {
+            "type": "string",
+            "metadata": { "description": "Key for the target storage account" }
         }
     },
     "variables": {
@@ -358,7 +366,7 @@
                                     "autoUpgradeMinorVersion": true,
                                     "settings": {
                                         "fileUris": [ "[concat(variables('templateSource'), 'install.ps1')]" ],
-                                        "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -file ', 'install.ps1', ' ', '-serviceBits', ' ', parameters('serviceBits'), ' ', '-storageAccountName', ' ', variables('storageAccountNames').jobqueue, ' ',  '-storageAccountKey', ' ', listKeys(variables('storageAccountNames').jobqueue, variables('apiVersions').storageAccounts).key1, ' ', '-encodingThreads',' ', variables('vm').worker.encodingThreads)]"
+                                        "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -file ', 'install.ps1', ' ', '-serviceBits', ' ', parameters('serviceBits'), ' ', '-storageAccountName', ' ', parameters('targetStorageAccountName'), ' ',  '-storageAccountKey', ' ', parameters('targetStorageAccountKey'), ' ', '-encodingThreads',' ', variables('vm').worker.encodingThreads)]"
                                     }
                                 }
                             }
