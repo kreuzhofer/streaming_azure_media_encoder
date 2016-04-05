@@ -27,18 +27,19 @@
             "type": "string",
             "metadata": { "description": "URL of the package, like https://artefacts.blob.core.windows.net/public/build.zip" }
         },
+        "targetStorageAccountResourceGroup": {
+            "type": "string",
+            "metadata": { "description": "Resource group of the target storage account" }
+        },
         "targetStorageAccountName": {
             "type": "string",
-            "metadata": { "description": "Name for the target storage account" }
-        },
-        "targetStorageAccountKey": {
-            "type": "string",
-            "metadata": { "description": "Key for the target storage account" }
+            "metadata": { "description": "Name of the target storage account" }
         }
     },
     "variables": {
         "githubUser": "kreuzhofer",
         "templateSource": "[concat('https://raw.githubusercontent.com/', variables('githubUser'), '/streaming_azure_media_encoder/master/src/StreamingAzureMediaEncoder/ARM/')]",
+        "fileShareStorageAccountID": "[concat('/subscriptions/',subscription().subscriptionId,'/resourceGroups/',parameters('targetStorageAccountResourceGroup'),'/providers/Microsoft.Storage/storageAccounts/',parameters('targetStorageAccountName'))]",
         "apiVersions": {
             "storageAccounts": "2015-06-15",
             "networkSecurityGroups": "2015-06-15",
@@ -366,7 +367,7 @@
                                     "autoUpgradeMinorVersion": true,
                                     "settings": {
                                         "fileUris": [ "[concat(variables('templateSource'), 'install.ps1')]" ],
-                                        "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -file ', 'install.ps1', ' ', '-serviceBits', ' ', parameters('serviceBits'), ' ', '-storageAccountName', ' ', parameters('targetStorageAccountName'), ' ',  '-storageAccountKey', ' ', parameters('targetStorageAccountKey'), ' ', '-encodingThreads',' ', variables('vm').worker.encodingThreads)]"
+                                        "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -file ', 'install.ps1', ' ', '-serviceBits', ' ', parameters('serviceBits'), ' ', '-storageAccountName', ' ', parameters('targetStorageAccountName'), ' ',  '-storageAccountKey', ' \"', listKeys(variables('fileShareStorageAccountID'), variables('apiVersions').storageAccounts).key1, '\" ', '-encodingThreads',' ', variables('vm').worker.encodingThreads)]"
                                     }
                                 }
                             }
