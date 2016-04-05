@@ -33,14 +33,17 @@ namespace AzureChunkingMediaFileUploader
 
             var jobId = Guid.NewGuid().ToString();
 
+
             ChunkingFileUploaderUtils.Log = Console.WriteLine;
-            await ChunkingFileUploaderUtils.UploadAsync(jobId, fileToUpload, connectionString, profileFileName);
+            var result = await ChunkingFileUploaderUtils.UploadAsync(jobId, fileToUpload, connectionString, profileFileName);
+            ProgressTracker.Log = Console.WriteLine;
+            await ProgressTracker.TrackProgress(jobId, connectionString, result.Count);
         }
 
         private static void Help()
         {
             Console.WriteLine("Azure Chunking Media File Uploader");
-            Console.WriteLine("USAGE: AzureChunkingMediaFileUploader.exe <UploadFile> <Container> <ConnectionString>");
+            Console.WriteLine("USAGE: AzureChunkingMediaFileUploader.exe <UploadFile> <ConnectionString> <ProfileFile>");
         }
     }
 }

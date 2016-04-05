@@ -14,5 +14,11 @@ namespace AzureChunkingMediaFileUploader
         public const int MB = kB * 1024;
         public const long GB = MB * 1024;
         public const string QueueName = "uploadnotifications";
+        public const string TableName = "encodingTasks";
+
+        public const string STATUS_RUNNING = "RUNNING";
+        public const string STATUS_DONE = "DONE";
+        public const string STATUS_ABORTED = "ABORTED";
+        public const string STATUS_UPLOADING = "UPLOADING";
     }
 }

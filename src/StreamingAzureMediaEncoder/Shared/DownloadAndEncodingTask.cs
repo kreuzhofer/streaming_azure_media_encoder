@@ -52,7 +52,7 @@ namespace AzureChunkingMediaEncoder
             // update table to indicate we are running
             var tableRef = new CloudTable(encodingTaskMetaData.TableUri, new StorageCredentials(encodingTaskMetaData.TableSas));
             var task = new EncodingTaskEntity(encodingTaskMetaData.JobId, encodingTaskMetaData.TaskId);
-            task.Status = "RUNNING";
+            task.Status = Constants.STATUS_RUNNING;
             task.TaskMetaData.StartTime = DateTime.UtcNow;
             task.TaskMetaData.EncoderParameters = encodingTaskMetaData.EncoderParameters;
             task.TaskMetaData.RenditionIndex = encodingTaskMetaData.RenditionIndex;
@@ -133,7 +133,7 @@ namespace AzureChunkingMediaEncoder
                         server.Flush();
 
                         // update status
-                        task.Status = "RUNNING";
+                        task.Status = Constants.STATUS_RUNNING;
                         task.Progress = (i + 1)*100 / allBlobsInFile.Count;
                         var updateOperation = TableOperation.Replace(task);
                         tableRef.Execute(updateOperation);
@@ -218,7 +218,7 @@ namespace AzureChunkingMediaEncoder
             catch (Exception)
             {
                 // Status is ABORTED
-                task.Status = "ABORTED";
+                task.Status = Constants.STATUS_ABORTED;
                 task.TaskMetaData.FfmpegLog = logFfmpeg.ToString();
                 task.TaskMetaData.EndTime = DateTime.UtcNow;
                 task.TaskMetaData.Duration = watch.Elapsed;
@@ -235,7 +235,7 @@ namespace AzureChunkingMediaEncoder
             if (ffmpegError)
             {
                 // Status is ABORTED
-                task.Status = "ABORTED";
+                task.Status = Constants.STATUS_ABORTED;
                 task.TaskMetaData.FfmpegLog = logFfmpeg.ToString();
                 task.TaskMetaData.EndTime = DateTime.UtcNow;
                 task.TaskMetaData.Duration = watch.Elapsed;
@@ -246,7 +246,7 @@ namespace AzureChunkingMediaEncoder
             Console.WriteLine("Encoding Done");
 
             // Update status to UPLOADING
-            task.Status = "UPLOADING";
+            task.Status = Constants.STATUS_UPLOADING;
             var updateOperation4 = TableOperation.Replace(task);
             tableRef.Execute(updateOperation4);
 
@@ -258,7 +258,7 @@ namespace AzureChunkingMediaEncoder
             Console.WriteLine("Upload done");
 
             // Update status to DONE
-            task.Status = "DONE";
+            task.Status = Constants.STATUS_DONE;
             task.TaskMetaData.EndTime = DateTime.UtcNow;
             task.TaskMetaData.Duration = watch.Elapsed;
             var updateOperation3 = TableOperation.Replace(task);

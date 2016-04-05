@@ -140,7 +140,7 @@ namespace AzureChunkingMediaFileUploader
                 });
                 // create table and access rights
                 var tableClient = storageAccount.CreateCloudTableClient();
-                var tableRef = tableClient.GetTableReference("encodingTasks");
+                var tableRef = tableClient.GetTableReference(Constants.TableName);
                 tableRef.CreateIfNotExists();
                 var tableSas = tableRef.GetSharedAccessSignature(new SharedAccessTablePolicy()
                     {

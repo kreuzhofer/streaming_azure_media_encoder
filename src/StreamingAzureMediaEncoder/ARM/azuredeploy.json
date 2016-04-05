@@ -87,8 +87,8 @@
             },
             "vmStorageAccountContainerName": "vhds",
             "worker": {
-                "size": "Standard_D1_v2",
-                "encodingThreads": "4"
+                "size": "Standard_D5_v2",
+                "encodingThreads": "1"
             },
             "jumphost": { "size": "Standard_A1" }
         }

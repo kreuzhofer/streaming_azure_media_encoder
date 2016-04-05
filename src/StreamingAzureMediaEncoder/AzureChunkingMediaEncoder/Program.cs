@@ -28,7 +28,7 @@ namespace AzureChunkingMediaEncoder
             var cts = new CancellationTokenSource();
             var ct = cts.Token;
 
-            var task1 = Task.Factory.StartNew(()=> { new DownloadAndEncodingTask().Start(storageAccount, ct); }, ct);
+            var task1 = Task.Factory.StartNew(() => { new DownloadAndEncodingTask().Start(storageAccount, ct); }, ct);
             var task2 = Task.Factory.StartNew(() => { new DownloadAndEncodingTask().Start(storageAccount, ct); }, ct);
             var task3 = Task.Factory.StartNew(() => { new DownloadAndEncodingTask().Start(storageAccount, ct); }, ct);
             var task4 = Task.Factory.StartNew(() => { new DownloadAndEncodingTask().Start(storageAccount, ct); }, ct);
