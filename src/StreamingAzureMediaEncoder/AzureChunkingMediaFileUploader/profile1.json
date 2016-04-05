@@ -2,7 +2,7 @@
     "name": "Mobile clients",
     "renditions": [
         {
-            "ffmpeg": "-vcodec h264 -preset slow -c:a copy -b:v 25000k -s 1920x1080",
+            "ffmpeg": "-c:v libx264 -preset slow -c:a copy -b:v 25000k",
             "suffix": "_1920x1080.mp4"
         }
     ]
