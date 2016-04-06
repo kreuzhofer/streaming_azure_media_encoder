@@ -16,8 +16,8 @@ Param(
 )
 
 $location = "westeurope"
-$instanceCount = 0;
-$vmSize = "Standard_G5";
+$instanceCount = 5;
+$vmSize = "Standard_D5_v2";
 
 # Login to Azure
 Login-AzureRmAccount
