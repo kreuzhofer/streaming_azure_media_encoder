@@ -9,7 +9,7 @@
         "adminPassword": {
             "type": "securestring"
         },
-        "deploymentName": {
+        "deploymentId": {
             "type": "string",
             "defaultValue": "pl1",
             "metadata": { "description": "Unique identifier which becomes part of all names, like storage accounts" }
@@ -34,6 +34,13 @@
         "targetStorageAccountName": {
             "type": "string",
             "metadata": { "description": "Name of the target storage account" }
+        },
+        "vmSize":{
+            "type": "string",
+            "metadata": {
+                "description":"The type of virtual machine to use for the vm scaleset",
+                "defaultValue": "Standard_D1_v2"
+            }
         }
     },
     "variables": {
@@ -53,12 +60,12 @@
             "jumphost": "jumphost",
             "worker": "worker"
         },
-        "newStorageAccountSuffix": "[concat(parameters('deploymentName'), 'vmss')]",
+        "newStorageAccountSuffix": "[concat(parameters('deploymentId'), 'vmss')]",
         "storageAccountPrefix": [ "a", "g", "m", "s", "y" ],
-        "storageAccountNameSuffix": "[toLower(replace(parameters('deploymentName'),'-',''))]",
+        "storageAccountNameSuffix": "[toLower(replace(parameters('deploymentId'),'-',''))]",
         "storageAccountNames": {
-            "jobqueue": "[concat('jobqueue', parameters('deploymentName'))]",
-            "jumphost": "[concat(variables('suffix').jumphost, parameters('deploymentName'))]"
+            "jobqueue": "[concat('jobqueue', parameters('deploymentId'))]",
+            "jumphost": "[concat(variables('suffix').jumphost, parameters('deploymentId'))]"
         },
         "publicIPs": {
             "jumphost": "jumphost"
@@ -76,11 +83,11 @@
             }
         },
         "vnet": {
-            "name": "[concat(parameters('deploymentName'),'-vnet')]",
+            "name": "[concat(parameters('deploymentId'),'-vnet')]",
             "address": "[variables('addressrange').global]",
             "subnet": {
                 "worker": {
-                    "name": "[concat(parameters('deploymentName'), '-subnet-', variables('suffix').worker)]",
+                    "name": "[concat(parameters('deploymentId'), '-subnet-', variables('suffix').worker)]",
                     "address": "[variables('addressrange').worker]"
                 }
             }
@@ -96,7 +103,7 @@
             },
             "vmStorageAccountContainerName": "vhds",
             "worker": {
-                "size": "Standard_D5_v2",
+                "size": "[parameters('vmSize')]",
                 "encodingThreads": "1"
             },
             "jumphost": { "size": "Standard_A1" }
@@ -187,7 +194,7 @@
             "properties": {
                 "publicIPAllocationMethod": "Dynamic",
                 "dnsSettings": {
-                    "domainNameLabel": "[concat(parameters('deploymentName'))]"
+                    "domainNameLabel": "[concat(parameters('deploymentId'))]"
                 }
             }
         },
@@ -293,7 +300,7 @@
             "type": "Microsoft.Compute/virtualMachineScaleSets",
             "apiVersion": "[variables('apiVersions').virtualMachineScaleSets]",
             "location": "[resourceGroup().location]",
-            "name": "[concat(parameters('deploymentName'),'-workers')]",
+            "name": "[concat(parameters('deploymentId'),'-workers')]",
             "dependsOn": [
                 "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountNames').jobqueue)]",
                 "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountPrefix')[0], variables('newStorageAccountSuffix'))]",
@@ -334,7 +341,7 @@
                         }
                     },
                     "osProfile": {
-                        "computerNamePrefix": "[concat('vm',parameters('deploymentName'))]",
+                        "computerNamePrefix": "[concat('vm',parameters('deploymentId'))]",
                         "adminUsername": "[parameters('adminUsername')]",
                         "adminPassword": "[parameters('adminPassword')]"
                     },
