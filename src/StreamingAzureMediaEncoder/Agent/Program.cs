@@ -1,4 +1,5 @@
-﻿using AzureChunkingMediaEncoder;
+﻿using System.IO;
+using AzureChunkingMediaEncoder;
 
 namespace Agent
 {
@@ -48,6 +49,7 @@ namespace Agent
 
         public static string StorageAccount { get { return Get("StorageAccount"); } }
         public static string EncodingThreads { get { return Get("EncodingThreads"); } }
+        public static string TempFolder { get { return Get("TempFolder"); } }
 
         static LoggingConfiguration CreateLoggingConfiguration()
         {
@@ -95,7 +97,7 @@ namespace Agent
             HostFactory.Run(x =>
             {
                 x.Service<FFMPEGService>(instance => instance
-                        .ConstructUsing(() => new FFMPEGService(StorageAccount, EncodingThreads))
+                        .ConstructUsing(() => new FFMPEGService(StorageAccount, EncodingThreads, TempFolder))
                         .WhenStarted(s => s.Start())
                         .WhenStopped(s => s.Stop())
                     );
@@ -113,11 +115,14 @@ namespace Agent
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
         
-        public FFMPEGService(string storageAccount, string encodingThreads)
+        public FFMPEGService(string storageAccount, string encodingThreads, string tempFolder)
         {
             this.StorageAccount = storageAccount;
             this.EncodingThreads = int.Parse(encodingThreads);
+            this.TempFolder = tempFolder;
         }
+
+        public string TempFolder { get; set; }
 
         public string StorageAccount { get; set; }
 
@@ -139,13 +144,27 @@ namespace Agent
 
         public async Task RunAsync(CancellationToken cancellationToken)
         {
+            try
+            {
+                // check for tempfolder to exist
+                if (!Directory.Exists(TempFolder))
+                {
+                    Directory.CreateDirectory(TempFolder);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex.Message);
+                throw;
+            }
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 logger.Debug($"Starting workers...");
                 var workersList = new List<Task>();
                 for (int i = 0; i < EncodingThreads; i++)
                 {
-                    var task = Task.Factory.StartNew(() => { new DownloadAndEncodingTask().Start(StorageAccount, cancellationToken); }, cancellationToken);
+                    var task = Task.Factory.StartNew(() => { new DownloadAndEncodingTask().Start(StorageAccount, TempFolder, cancellationToken); }, cancellationToken);
                     workersList.Add(task);
                 }
                 Task.WaitAll(workersList.ToArray());

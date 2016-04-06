@@ -20,7 +20,7 @@ namespace AzureChunkingMediaEncoder
 {
     public class DownloadAndEncodingTask
     {
-        public void Start(string storageAccount, CancellationToken ct)
+        public void Start(string storageAccount, string tempFolder, CancellationToken ct)
         {
             var storageAccountClient = CloudStorageAccount.Parse(storageAccount);
             var queueClient = storageAccountClient.CreateCloudQueueClient();
@@ -34,7 +34,7 @@ namespace AzureChunkingMediaEncoder
                     Console.WriteLine(message.AsString);
                     queue.DeleteMessage(message);
 
-                    StartDownloadAndEncode(JsonConvert.DeserializeObject<EncodingTaskMetaData>(message.AsString), ct);
+                    StartDownloadAndEncode(JsonConvert.DeserializeObject<EncodingTaskMetaData>(message.AsString), tempFolder, ct);
                 }
                 catch (Exception)
                 {
@@ -44,7 +44,7 @@ namespace AzureChunkingMediaEncoder
             }
         }
 
-        private void StartDownloadAndEncode(EncodingTaskMetaData encodingTaskMetaData, CancellationToken mainCancellationToken)
+        private void StartDownloadAndEncode(EncodingTaskMetaData encodingTaskMetaData, string tempFolder, CancellationToken mainCancellationToken)
         {
             var watch = Stopwatch.StartNew();
             var sasContainerRef = new CloudBlobContainer(encodingTaskMetaData.SourceContainerUri, new StorageCredentials(encodingTaskMetaData.SourceContainerSas));
@@ -70,6 +70,7 @@ namespace AzureChunkingMediaEncoder
             var inputPipeName = Guid.NewGuid() + encodingTaskMetaData.BlobName;
             var logFfmpeg = new StringBuilder();
             var ffmpegError = false;
+            string targetFilename = Path.Combine(tempFolder, encodingTaskMetaData.TargetFilename);
 
             // start named pipe server
             NamedPipeServerStream server = null;
@@ -154,7 +155,7 @@ namespace AzureChunkingMediaEncoder
 
                 var ffmpeg = new FileInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ffmpeg.exe"));
                 string ffmpegArgs = @"-i \\.\pipe\{2} {0} {1}";
-                var ffmpegArgsFormatted = String.Format(ffmpegArgs, encodingTaskMetaData.EncoderParameters, encodingTaskMetaData.TargetFilename, inputPipeName);
+                var ffmpegArgsFormatted = String.Format(ffmpegArgs, encodingTaskMetaData.EncoderParameters, targetFilename, inputPipeName);
                 var startInfo = new ProcessStartInfo()
                 {
                     UseShellExecute = false,
@@ -252,9 +253,9 @@ namespace AzureChunkingMediaEncoder
 
             // upload file to target folder
             var sasTargetFolderRef = new CloudBlobContainer(encodingTaskMetaData.TargetContainerUri, new StorageCredentials(encodingTaskMetaData.TargetContainerSas));
-            var uploadTask = LargeFileUploaderUtils.UploadAsync(new FileInfo(encodingTaskMetaData.TargetFilename), sasTargetFolderRef, (sender, i) => { });
+            var uploadTask = LargeFileUploaderUtils.UploadAsync(new FileInfo(targetFilename), sasTargetFolderRef, (sender, i) => { });
             Task.WaitAll(uploadTask);
-            File.Delete(encodingTaskMetaData.TargetFilename); // delete local file after upload
+            File.Delete(targetFilename); // delete local file after upload
             Console.WriteLine("Upload done");
 
             // Update status to DONE
