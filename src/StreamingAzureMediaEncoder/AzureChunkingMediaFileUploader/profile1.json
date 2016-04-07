@@ -12,6 +12,10 @@
         {
             "ffmpeg": "-vcodec h264 -preset faster -s 1920x1080 -vb 25000k",
             "suffix": "_1920x1080_faster.mp4"
+        },
+        {
+            "ffmpeg": "-vcodec h264 -preset ultrafast -s 1920x1080 -vb 25000k",
+            "suffix": "_1920x1080_ultrafast.mp4"
         }
     ]
 }
