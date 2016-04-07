@@ -3,11 +3,11 @@
     "renditions": [
         {
             "ffmpeg": "-vcodec h264 -preset medium -s 1920x1080 -vb 25000k",
-            "suffix": "_1920x1080_faster.mp4"
+            "suffix": "_1920x1080_medium.mp4"
         },
         {
             "ffmpeg": "-vcodec h264 -preset fast -s 1920x1080 -vb 25000k",
-            "suffix": "_1920x1080_faster.mp4"
+            "suffix": "_1920x1080_fast.mp4"
         },
         {
             "ffmpeg": "-vcodec h264 -preset faster -s 1920x1080 -vb 25000k",
