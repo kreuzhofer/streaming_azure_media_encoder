@@ -19,6 +19,7 @@ using AzureChunkingMediaFileUploader;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Shared;
 
 namespace AzureUploaderGui
 {
@@ -96,12 +97,19 @@ namespace AzureUploaderGui
 
             // load profile and validate
             var profileRawData = File.ReadAllText(textBlockProfilefile.Text);
-            dynamic profile = JsonConvert.DeserializeObject(profileRawData);
-            var count = ((JArray)profile.renditions).Count;
-
+            var profile = JsonConvert.DeserializeObject<ProfileDefinition>(profileRawData);
+            var count = profile.renditions.Count;
 
             var uploadTask = ChunkingFileUploaderUtils.UploadAsync(jobId, textBlockVideoFile.Text, connectionString, textBlockProfilefile.Text);
+
             ProgressTracker.Log = Log;
+            ProgressTracker.Progress = p =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    encodingProgress.Value = p;
+                });
+            };
             var progressTask = ProgressTracker.TrackProgress(jobId, connectionString, count);
 
             await uploadTask;

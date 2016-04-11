@@ -17,6 +17,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)EncodingTaskEntity.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)EncodingTaskMetaData.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)LargeFileUploaderUtils.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ProfileDefinition.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ProgressTracker.cs" />
   </ItemGroup>
 </Project>

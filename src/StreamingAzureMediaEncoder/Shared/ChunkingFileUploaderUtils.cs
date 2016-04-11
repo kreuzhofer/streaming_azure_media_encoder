@@ -168,7 +168,7 @@ namespace AzureChunkingMediaFileUploader
 
                 // read profile and generate tasks
                 var profileRawData = File.ReadAllText(profileFileName);
-                dynamic profile = JsonConvert.DeserializeObject(profileRawData);
+                var profile = JsonConvert.DeserializeObject<ProfileDefinition>(profileRawData);
                 var index = 0;
                 foreach (var rendition in profile.renditions)
                 {
