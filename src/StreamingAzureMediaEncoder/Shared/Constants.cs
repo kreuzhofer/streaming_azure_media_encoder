@@ -23,6 +23,6 @@ namespace AzureChunkingMediaFileUploader
         public const string STATUS_DONE = "DONE";
         public const string STATUS_ABORTED = "ABORTED";
         public const string STATUS_UPLOADING = "UPLOADING";
-        public static int PeekMessageCount = 100;
+        public static int PeekMessageCount = 25;
     }
 }

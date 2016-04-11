@@ -30,6 +30,7 @@ namespace AzureChunkingMediaEncoder
             {
                 try
                 {
+                    queue.FetchAttributes();
                     if (queue.ApproximateMessageCount != null && queue.ApproximateMessageCount.Value > 0)
                     {
                         CloudQueueMessage messageWithLowestIndex = null;
@@ -38,6 +39,7 @@ namespace AzureChunkingMediaEncoder
                             // peek the queue to find the lowest available renditionindex
                             var allMessages = queue.PeekMessages(Constants.PeekMessageCount);
                             int lowestIndex = Int32.MaxValue;
+                            string lowestId = null;
                             foreach (var cloudQueueMessage in allMessages)
                             {
                                 var messageObj =
@@ -45,18 +47,26 @@ namespace AzureChunkingMediaEncoder
                                 var minIndex = messageObj.RenditionIndex;
                                 if (minIndex < lowestIndex)
                                 {
-                                    messageWithLowestIndex = cloudQueueMessage;
+                                    lowestIndex = minIndex;
+                                    lowestId = cloudQueueMessage.Id;
                                 }
                             }
-                            // try to delete this message
-                            try
+
+                            // try to get message with the lowest known index
+                            var messages = queue.GetMessages(Constants.PeekMessageCount);
+                            foreach (var cloudQueueMessage in messages)
                             {
-                                queue.DeleteMessage(messageWithLowestIndex);
+                                if (cloudQueueMessage.Id == lowestId)
+                                {
+                                    queue.DeleteMessage(cloudQueueMessage);
+                                    messageWithLowestIndex = cloudQueueMessage;
+                                }
+                                else
+                                {
+                                    queue.UpdateMessage(cloudQueueMessage, TimeSpan.Zero, MessageUpdateFields.Visibility);
+                                }
                             }
-                            catch
-                            {
-                                messageWithLowestIndex = null;
-                            }
+
                         } while (messageWithLowestIndex == null);
 
                         Console.WriteLine(messageWithLowestIndex.AsString);

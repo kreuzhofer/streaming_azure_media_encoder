@@ -17,6 +17,8 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using AzureChunkingMediaFileUploader;
 using Microsoft.Win32;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace AzureUploaderGui
 {
@@ -51,6 +53,7 @@ namespace AzureUploaderGui
             {
                 textBlockProfilefile.Text = picker.FileName;
             }
+            Validate();
         }
 
         private void Validate()
@@ -90,9 +93,20 @@ namespace AzureUploaderGui
                     uploadProgress.Value = i;
                 });
             };
-            var result = await ChunkingFileUploaderUtils.UploadAsync(jobId, textBlockVideoFile.Text, connectionString, textBlockProfilefile.Text);
+
+            // load profile and validate
+            var profileRawData = File.ReadAllText(textBlockProfilefile.Text);
+            dynamic profile = JsonConvert.DeserializeObject(profileRawData);
+            var count = ((JArray)profile.renditions).Count;
+
+
+            var uploadTask = ChunkingFileUploaderUtils.UploadAsync(jobId, textBlockVideoFile.Text, connectionString, textBlockProfilefile.Text);
             ProgressTracker.Log = Log;
-            await ProgressTracker.TrackProgress(jobId, connectionString, result.Count);
+            var progressTask = ProgressTracker.TrackProgress(jobId, connectionString, count);
+
+            await uploadTask;
+            await progressTask;
+
             buttonStartUpload.IsEnabled = true;
         }
 

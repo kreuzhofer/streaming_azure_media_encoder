@@ -159,10 +159,6 @@ namespace AzureChunkingMediaFileUploader
                 var jobTableRef = tableClient.GetTableReference(Constants.JobTableName);
                 jobTableRef.CreateIfNotExists();
 
-                // read profile and generate tasks
-                var profileRawData = File.ReadAllText(profileFileName);
-                dynamic profile = JsonConvert.DeserializeObject(profileRawData);
-
                 // generate job table entry to indicate a new job starting
                 var jobTableEntry = new EncodingJobEntity(Constants.TENANT, jobId);
                 jobTableEntry.SourceFileName = blobName;
@@ -170,6 +166,9 @@ namespace AzureChunkingMediaFileUploader
                 var insertOperation = TableOperation.Insert(jobTableEntry);
                 await jobTableRef.ExecuteAsync(insertOperation);
 
+                // read profile and generate tasks
+                var profileRawData = File.ReadAllText(profileFileName);
+                dynamic profile = JsonConvert.DeserializeObject(profileRawData);
                 var index = 0;
                 foreach (var rendition in profile.renditions)
                 {
