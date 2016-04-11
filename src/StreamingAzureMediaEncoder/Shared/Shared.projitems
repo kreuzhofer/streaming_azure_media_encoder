@@ -10,10 +10,13 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)BlobMetadata.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ChunkingFileUploaderUtils.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Constants.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)DownloadAndEncodingTask.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)EncodingJobEntity.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)EncodingTaskEntity.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)EncodingTaskMetaData.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)LargeFileUploaderUtils.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ProgressTracker.cs" />
   </ItemGroup>
 </Project>

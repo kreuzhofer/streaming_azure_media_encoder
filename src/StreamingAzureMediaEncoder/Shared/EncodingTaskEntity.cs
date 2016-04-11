@@ -44,6 +44,8 @@ namespace Shared
 
     public class TaskMetaData
     {
+        public string SourceFileName { get; set; }
+        public string TargetFileName { get; set; }
         public string FfmpegLog { get; set; }
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }

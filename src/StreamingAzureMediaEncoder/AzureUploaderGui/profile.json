@@ -1,0 +1,49 @@
+{
+    "name": "Mobile clients",
+    "renditions": [
+        {
+            "ffmpeg": "-acodec aac -ab 128k -s 1920x1080 -c:v libx264 -b:v 25000k -minrate 25000k -maxrate 25000k -bufsize 12000k -pix_fmt yuv420p -movflags +faststart",
+            "suffix": "_h264_1080p_25000.mp4",
+            "destinations":[{
+                "partner":"XYZ",
+                "location": "ftp://user:pw@ftp-domain.com/"
+            },{
+                "partner":"ABC",
+                "location": "ftp://user:pw@ftp-domain2.com/"
+            }]
+        },
+        {
+            "ffmpeg": "-acodec aac -ab 128k -s 1280x720 -c:v libx264 -b:v 15000k -minrate 15000k -maxrate 15000k -bufsize 7000k -pix_fmt yuv420p -movflags +faststart",
+            "suffix": "_h264_1280_720_15000.mp4"
+        },
+        {
+            "ffmpeg": "-acodec aac -ab 128k -s 1920x1080 -c:v libx264 -b:v 8500k -minrate 8500k -maxrate 8500k -bufsize 4000k -pix_fmt yuv420p -movflags +faststart",
+            "suffix": "_h264_1080p_8500.mp4"
+        },
+        {
+            "ffmpeg": "-acodec aac -ab 128k -s 1280x720 -c:v libx264 -b:v 6500k -minrate 6500k -maxrate 6500k -bufsize 3000k -pix_fmt yuv420p -movflags +faststart",
+            "suffix": "_h264_720p_6500.mp4"
+        },
+        {
+            "ffmpeg": "-acodec aac -ab 128k -s 1280x720 -c:v libx264 -b:v 4500k -minrate 4500k -maxrate 4500k -bufsize 2000k -pix_fmt yuv420p -movflags +faststart",
+            "suffix": "_h264_720p_4500.mp4"
+        },
+        {
+            "ffmpeg": "-c:v libx264 -c:a aac -s 1024x576 -b:v 2400k -b:a 192K",
+            "suffix": "_flash9_1024_576_2400.flv"
+        },
+        {
+            "ffmpeg": "-ss 00:00:10 -vf \"scale=640:360\" -vframes 1",
+            "suffix": "_640_360_10.jpg"
+        },
+        {
+            "ffmpeg": "-ss 00:00:10 -vf \"scale=1840:1000, crop=1000:1000\" -vframes 1",
+            "suffix": "_1000_1000_10.jpg"
+        },
+        {
+            "ffmpeg": "-ss 00:00:05 -vf \"scale=146:82\" -vframes 1",
+            "suffix": "_146_82_5.jpg"
+        }
+    ]
+}
+

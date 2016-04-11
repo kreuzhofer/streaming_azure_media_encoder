@@ -31,6 +31,17 @@ New-AzureRmResourceGroup -Name $resourceGroupName -Location "$location" -Force
 $parameters = @{"adminUsername"="$adminUsername"; "adminPassword" = "$adminPassword"; "deploymentId" = "$deploymentId"; "dnsNameForPublicIP" = "$deploymentId"; "instanceCount" = $instanceCount; "serviceBits" = "$serviceBits"; "targetStorageAccountResourceGroup" = "$targetStorageAccountResourceGroup"; "targetStorageAccountName" = "$targetStorageAccountName"; "vmSize" = "$vmSize" }
 
 # Deploy ARM template
-New-AzureRmResourceGroupDeployment -Name "$deploymentId" -Mode Complete -ResourceGroupName "$resourceGroupName" -TemplateFile azuredeploy.json -TemplateParameterObject $parameters -Force
+$deployResult = New-AzureRmResourceGroupDeployment -Name "$deploymentId" -Mode Complete -ResourceGroupName "$resourceGroupName" -TemplateFile azuredeploy.json -TemplateParameterObject $parameters -Force
+# output result
+Write-Output $deployResult
+
+if($deployResult.ProvisioningState.Equals("Succeeded"))
+{
+    exit 0
+}
+else
+{
+    exit 1
+}
 
 

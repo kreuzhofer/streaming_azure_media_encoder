@@ -11,12 +11,14 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
+using Shared;
 
 namespace AzureChunkingMediaFileUploader
 {
     public static class ChunkingFileUploaderUtils
     {
         public static Action<string> Log { get; set; }
+        public static Action<double> Progress { get; set; }
         public static void UseConsoleForLogging() { Log = Console.Out.WriteLine; }
         const uint DEFAULT_PARALLELISM = 1;
 
@@ -42,9 +44,10 @@ namespace AzureChunkingMediaFileUploader
         {
             var blobClient = storageAccount.CreateCloudBlobClient();
 
-            // create the container
+            // create the source container
             var sourceContainer = blobClient.GetContainerReference(Guid.NewGuid().ToString());
             await sourceContainer.CreateIfNotExistsAsync();
+
             // create a SAS to pass it to the client
             var sourceContainerSas = sourceContainer.GetSharedAccessSignature(new SharedAccessBlobPolicy()
             {
@@ -53,6 +56,11 @@ namespace AzureChunkingMediaFileUploader
             });
             var targetContainer = blobClient.GetContainerReference(jobId);
             await targetContainer.CreateIfNotExistsAsync();
+            // set permissions to be public on the target container on blob level
+            await targetContainer.SetPermissionsAsync(new BlobContainerPermissions()
+            {
+                PublicAccess = BlobContainerPublicAccessType.Blob
+            });
             // create a SAS to pass it to the client
             var targetContainerSas = targetContainer.GetSharedAccessSignature(new SharedAccessBlobPolicy()
             {
@@ -126,9 +134,8 @@ namespace AzureChunkingMediaFileUploader
             var result = new List<EncodingTaskMetaData>();
             try
             {
-                // queue a new message to notifiy the downloaders about the new upload
                 var queueClient = storageAccount.CreateCloudQueueClient();
-                var queue = queueClient.GetQueueReference(Constants.QueueName);
+                var queue = queueClient.GetQueueReference(Constants.TaskQueueName);
                 queue.CreateIfNotExists();
                 // get shared access signature to read from the queue
                 var jobQueueSas = queue.GetSharedAccessSignature(new SharedAccessQueuePolicy()
@@ -140,7 +147,7 @@ namespace AzureChunkingMediaFileUploader
                 });
                 // create table and access rights
                 var tableClient = storageAccount.CreateCloudTableClient();
-                var tableRef = tableClient.GetTableReference(Constants.TableName);
+                var tableRef = tableClient.GetTableReference(Constants.TaskTableName);
                 tableRef.CreateIfNotExists();
                 var tableSas = tableRef.GetSharedAccessSignature(new SharedAccessTablePolicy()
                     {
@@ -149,16 +156,27 @@ namespace AzureChunkingMediaFileUploader
                             SharedAccessTablePermissions.Query | SharedAccessTablePermissions.Update,
                         SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddDays(1)
                     });
+                var jobTableRef = tableClient.GetTableReference(Constants.JobTableName);
+                jobTableRef.CreateIfNotExists();
 
                 // read profile and generate tasks
                 var profileRawData = File.ReadAllText(profileFileName);
                 dynamic profile = JsonConvert.DeserializeObject(profileRawData);
+
+                // generate job table entry to indicate a new job starting
+                var jobTableEntry = new EncodingJobEntity(Constants.TENANT, jobId);
+                jobTableEntry.SourceFileName = blobName;
+                jobTableEntry.Status = Constants.STATUS_CREATED;
+                var insertOperation = TableOperation.Insert(jobTableEntry);
+                await jobTableRef.ExecuteAsync(insertOperation);
+
                 var index = 0;
                 foreach (var rendition in profile.renditions)
                 {
                     string ffmpegParameters = rendition.ffmpeg;
                     string suffix = rendition.suffix;
 
+                    // queue a new message to notifiy the downloaders about the new upload
                     var metaData = new EncodingTaskMetaData()
                     {
                         JobId = jobId,
@@ -202,6 +220,11 @@ namespace AzureChunkingMediaFileUploader
         internal static void log(string format, params object[] args)
         {
             if (Log != null) { Log(string.Format(format, args)); }
+        }
+
+        private static void progress(double progress)
+        {
+            if (Progress != null) { Progress(progress); }
         }
 
         public static async Task<byte[]> GetFileContentAsync(this FileInfo file, long offset, int length)
@@ -311,6 +334,7 @@ namespace AzureChunkingMediaFileUploader
                     MBPerMin.ToString("F1"),
                     estimatedArrivalTime()
                     );
+                progress(calcRelativeProgress(done, this.TotalBytes));
             }
 
             internal string estimatedArrivalTime()
@@ -358,7 +382,12 @@ namespace AzureChunkingMediaFileUploader
             private static string relativeProgress(long current, long total)
             {
                 return string.Format("{0} %",
-                    (100.0 * current / total).ToString("F3"));
+                    calcRelativeProgress(current, total).ToString("F3"));
+            }
+
+            private static float calcRelativeProgress(long current, long total)
+            {
+                return (float) (100.0*current/total);
             }
         }
 

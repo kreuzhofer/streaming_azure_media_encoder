@@ -24,17 +24,46 @@ namespace AzureChunkingMediaEncoder
         {
             var storageAccountClient = CloudStorageAccount.Parse(storageAccount);
             var queueClient = storageAccountClient.CreateCloudQueueClient();
-            var queue = queueClient.GetQueueReference(Constants.QueueName);
+            var queue = queueClient.GetQueueReference(Constants.TaskQueueName);
 
             while (!ct.IsCancellationRequested)
             {
                 try
                 {
-                    var message = queue.GetMessage();
-                    Console.WriteLine(message.AsString);
-                    queue.DeleteMessage(message);
+                    if (queue.ApproximateMessageCount != null && queue.ApproximateMessageCount.Value > 0)
+                    {
+                        CloudQueueMessage messageWithLowestIndex = null;
+                        do
+                        {
+                            // peek the queue to find the lowest available renditionindex
+                            var allMessages = queue.PeekMessages(Constants.PeekMessageCount);
+                            int lowestIndex = Int32.MaxValue;
+                            foreach (var cloudQueueMessage in allMessages)
+                            {
+                                var messageObj =
+                                    JsonConvert.DeserializeObject<EncodingTaskMetaData>(cloudQueueMessage.AsString);
+                                var minIndex = messageObj.RenditionIndex;
+                                if (minIndex < lowestIndex)
+                                {
+                                    messageWithLowestIndex = cloudQueueMessage;
+                                }
+                            }
+                            // try to delete this message
+                            try
+                            {
+                                queue.DeleteMessage(messageWithLowestIndex);
+                            }
+                            catch
+                            {
+                                messageWithLowestIndex = null;
+                            }
+                        } while (messageWithLowestIndex == null);
 
-                    StartDownloadAndEncode(JsonConvert.DeserializeObject<EncodingTaskMetaData>(message.AsString), tempFolder, ct);
+                        Console.WriteLine(messageWithLowestIndex.AsString);
+
+                        StartDownloadAndEncode(JsonConvert.DeserializeObject<EncodingTaskMetaData>(messageWithLowestIndex.AsString),
+                            tempFolder, ct);
+                    }
                 }
                 catch (Exception)
                 {
@@ -53,6 +82,8 @@ namespace AzureChunkingMediaEncoder
             var tableRef = new CloudTable(encodingTaskMetaData.TableUri, new StorageCredentials(encodingTaskMetaData.TableSas));
             var task = new EncodingTaskEntity(encodingTaskMetaData.JobId, encodingTaskMetaData.TaskId);
             task.Status = Constants.STATUS_RUNNING;
+            task.TaskMetaData.SourceFileName = encodingTaskMetaData.BlobName;
+            task.TaskMetaData.TargetFileName = encodingTaskMetaData.TargetFilename;
             task.TaskMetaData.StartTime = DateTime.UtcNow;
             task.TaskMetaData.EncoderParameters = encodingTaskMetaData.EncoderParameters;
             task.TaskMetaData.RenditionIndex = encodingTaskMetaData.RenditionIndex;
@@ -260,6 +291,7 @@ namespace AzureChunkingMediaEncoder
 
             // Update status to DONE
             task.Status = Constants.STATUS_DONE;
+            task.Progress = 100;
             task.TaskMetaData.EndTime = DateTime.UtcNow;
             task.TaskMetaData.Duration = watch.Elapsed;
             var updateOperation3 = TableOperation.Replace(task);

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureChunkingMediaFileUploader", "AzureChunkingMediaFileUploader\AzureChunkingMediaFileUploader.csproj", "{EBA2E68E-B58F-404D-8B0E-9AF6601CF8F7}"
 EndProject
@@ -21,10 +21,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{9618E76D
 		..\..\tools.cake = ..\..\tools.cake
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureUploaderGui", "AzureUploaderGui\AzureUploaderGui.csproj", "{BDCA284E-A0A0-430E-A215-A4DC9A23E5AB}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		Shared\Shared.projitems*{368895c8-6049-49c4-99be-d423b6de1716}*SharedItemsImports = 4
 		Shared\Shared.projitems*{a9bc3cfb-5a74-43cb-a37f-4b8af2c880d2}*SharedItemsImports = 13
+		Shared\Shared.projitems*{bdca284e-a0a0-430e-a215-a4dc9a23e5ab}*SharedItemsImports = 4
 		Shared\Shared.projitems*{eba2e68e-b58f-404d-8b0e-9af6601cf8f7}*SharedItemsImports = 4
 		Shared\Shared.projitems*{45a2e3bd-6d9e-4830-974f-623c8d55d3f2}*SharedItemsImports = 4
 	EndGlobalSection
@@ -53,6 +56,10 @@ Global
 		{368895C8-6049-49C4-99BE-D423B6DE1716}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{368895C8-6049-49C4-99BE-D423B6DE1716}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{368895C8-6049-49C4-99BE-D423B6DE1716}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BDCA284E-A0A0-430E-A215-A4DC9A23E5AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BDCA284E-A0A0-430E-A215-A4DC9A23E5AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BDCA284E-A0A0-430E-A215-A4DC9A23E5AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BDCA284E-A0A0-430E-A215-A4DC9A23E5AB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
