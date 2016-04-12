@@ -14,17 +14,15 @@
         </Grid.RowDefinitions>
         <StackPanel Orientation="Vertical">
             <Grid Height="70">
-                <StackPanel Orientation="Horizontal">
-                    <Image Source="Assets/Sky_Sports_logo.png"/>
-                    <Image Source="Assets/Premier_League_logo.png" Margin="20,0,0,0"/>
-                </StackPanel>
+                <Image Source="Assets/Sky_Sports_logo.png" Height="25" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,10,0,0"/>
+                <Image Source="Assets/Premier_League_logo.png" HorizontalAlignment="Right"/>
             </Grid>
             <TextBlock Text="Video file" Margin="0,10,0,0" FontWeight="Bold" />
             <Grid>
                 <TextBlock x:Name="textBlockVideoFile" HorizontalAlignment="Left"/>
                 <Button x:Name="buttonChooseVideo" Content="Select video file" HorizontalAlignment="Right" VerticalAlignment="Top" Width="135" Click="buttonChooseVideo_Click"/>
             </Grid>
-            <TextBlock Text="Profildatei" Margin="0,10,0,0" FontWeight="Bold" />
+            <TextBlock Text="Profile file" Margin="0,10,0,0" FontWeight="Bold" />
             <Grid>
                 <TextBlock x:Name="textBlockProfilefile" HorizontalAlignment="Left"/>
                 <Button x:Name="buttonChooseProfile" Content="Select profile file" HorizontalAlignment="Right" VerticalAlignment="Top" Width="135" Click="buttonChooseProfile_Click"/>

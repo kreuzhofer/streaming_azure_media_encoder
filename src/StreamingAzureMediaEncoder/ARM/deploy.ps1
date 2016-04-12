@@ -16,7 +16,7 @@ Param(
 )
 
 $location = "westeurope"
-$instanceCount = 5;
+$instanceCount = 0;
 $vmSize = "Standard_D5_v2";
 
 # Login to Azure

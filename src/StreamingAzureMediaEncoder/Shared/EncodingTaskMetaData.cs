@@ -21,5 +21,6 @@ namespace LargeFileUploader
         public int EncoderTimeout { get; set; }
 
         public int RenditionIndex { get; set; }
+        public Uri CallbackUri { get; set; }
     }
 }

@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureChunkingMediaFileUploader", "AzureChunkingMediaFileUploader\AzureChunkingMediaFileUploader.csproj", "{EBA2E68E-B58F-404D-8B0E-9AF6601CF8F7}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureLargeFileUploader", "AzureLargeFileUploader\AzureLargeFileUploader.csproj", "{B3821EDE-689E-4B36-A12F-EFF405C86DBE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureChunkingMediaEncoder", "AzureChunkingMediaEncoder\AzureChunkingMediaEncoder.csproj", "{45A2E3BD-6D9E-4830-974F-623C8D55D3F2}"
@@ -28,7 +26,6 @@ Global
 		Shared\Shared.projitems*{368895c8-6049-49c4-99be-d423b6de1716}*SharedItemsImports = 4
 		Shared\Shared.projitems*{a9bc3cfb-5a74-43cb-a37f-4b8af2c880d2}*SharedItemsImports = 13
 		Shared\Shared.projitems*{bdca284e-a0a0-430e-a215-a4dc9a23e5ab}*SharedItemsImports = 4
-		Shared\Shared.projitems*{eba2e68e-b58f-404d-8b0e-9af6601cf8f7}*SharedItemsImports = 4
 		Shared\Shared.projitems*{45a2e3bd-6d9e-4830-974f-623c8d55d3f2}*SharedItemsImports = 4
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,10 +33,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{EBA2E68E-B58F-404D-8B0E-9AF6601CF8F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EBA2E68E-B58F-404D-8B0E-9AF6601CF8F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EBA2E68E-B58F-404D-8B0E-9AF6601CF8F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EBA2E68E-B58F-404D-8B0E-9AF6601CF8F7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B3821EDE-689E-4B36-A12F-EFF405C86DBE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B3821EDE-689E-4B36-A12F-EFF405C86DBE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B3821EDE-689E-4B36-A12F-EFF405C86DBE}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -63,5 +56,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		EnterpriseLibraryConfigurationToolBinariesPath = packages\TransientFaultHandling.Core.5.1.1209.0\lib\NET4;packages\Unity.2.1.505.0\lib\NET35;packages\Unity.Interception.2.1.505.0\lib\NET35;packages\EnterpriseLibrary.Common.5.0.505.0\lib\NET35;packages\EnterpriseLibrary.WindowsAzure.TransientFaultHandling.5.1.1212.0\lib\NET4;packages\EnterpriseLibrary.WindowsAzure.TransientFaultHandling.5.1.1212.0\DesignTime
 	EndGlobalSection
 EndGlobal

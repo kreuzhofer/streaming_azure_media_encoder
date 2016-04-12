@@ -1,0 +1,18 @@
+﻿{
+    "type": "deliverable",
+    "subType": "clip",
+    "name": "__name__",
+    "producedFor": {
+        "titleId": "__titleid__",
+        "jobId": "__jobid__",
+        "taskId": "__taskid__"
+    },
+    "location": {
+        "name": "azure",
+        "url": "__azureurl__",
+        "status": "AVAILABLE"
+    },
+    "wrapper": {
+        "size": __size__
+    }
+}

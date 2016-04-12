@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -16,6 +17,8 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using AzureChunkingMediaFileUploader;
+using Microsoft.Practices.EnterpriseLibrary.WindowsAzure.TransientFaultHandling.AzureStorage;
+using Microsoft.Practices.TransientFaultHandling;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -84,6 +87,9 @@ namespace AzureUploaderGui
         private async void buttonStartUpload_Click(object sender, RoutedEventArgs e)
         {
             buttonStartUpload.IsEnabled = false;
+            encodingProgress.Value = 0;
+            uploadProgress.Value = 0;
+            listBoxLog.Items.Clear();
             var jobId = Guid.NewGuid().ToString();
             var connectionString = ConfigurationManager.ConnectionStrings["AzureStorageConnection"].ConnectionString;
             ChunkingFileUploaderUtils.Log = Log;
@@ -115,7 +121,46 @@ namespace AzureUploaderGui
             await uploadTask;
             await progressTask;
 
+            Log("sending notification...");
+            await DoCallback(progressTask, jobId);
+            Log("notification sent");
+
             buttonStartUpload.IsEnabled = true;
+        }
+
+        private async Task DoCallback(Task<bool> progressTask, string jobId)
+        {
+            try
+            {
+                var retryStrategy = new Incremental(5, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
+                var retryPolicy = new RetryPolicy<HttpErrorStrategy>(retryStrategy);
+                await retryPolicy.ExecuteAction(async () =>
+                {
+                // send callback when done
+                var callbackTemplate = @"
+{{
+  ""trigger"": ""job"",
+  ""subject"": ""{0}"",
+  ""facts"": {{
+      ""result"":""{1}"",
+      ""id"":""{2}""
+      }}
+}}";
+                    var status = progressTask.Result ? "done" : "failed";
+                    var result = progressTask.Result ? "all tasks done" : "at least one task failed";
+
+                    var callBackBody = String.Format(callbackTemplate, status, result, jobId);
+                    var callBackEndpoint = ConfigurationManager.AppSettings["JobCallbackEndpoint"];
+
+                    var client = new HttpClient();
+                    var content = new StringContent(callBackBody, Encoding.UTF8, "application/json");
+                    await client.PostAsync(new Uri(callBackEndpoint), content);
+                });
+            }
+            catch
+            {
+                // ignore
+            }
         }
 
         private void Log(string s)

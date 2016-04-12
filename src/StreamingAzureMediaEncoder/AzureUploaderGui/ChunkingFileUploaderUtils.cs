@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -193,7 +194,8 @@ namespace AzureChunkingMediaFileUploader
                         TableSas = tableSas,
                         TableUri = tableRef.Uri,
                         EncoderTimeout = Constants.ENCODER_TIMEOUT,
-                        RenditionIndex = index
+                        RenditionIndex = index,
+                        CallbackUri = new Uri(ConfigurationManager.AppSettings["TaskCallbackEndpoint"])
                     };
                     result.Add(metaData);
                     queue.AddMessage(new CloudQueueMessage(JsonConvert.SerializeObject(metaData)));

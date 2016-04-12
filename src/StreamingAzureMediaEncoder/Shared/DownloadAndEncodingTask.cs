@@ -3,11 +3,15 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
+using System.Net.Cache;
+using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AzureChunkingMediaFileUploader;
+using AzureUploaderGui;
 using LargeFileUploader;
+using Microsoft.Practices.TransientFaultHandling;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -294,10 +298,15 @@ namespace AzureChunkingMediaEncoder
 
             // upload file to target folder
             var sasTargetFolderRef = new CloudBlobContainer(encodingTaskMetaData.TargetContainerUri, new StorageCredentials(encodingTaskMetaData.TargetContainerSas));
-            var uploadTask = LargeFileUploaderUtils.UploadAsync(new FileInfo(targetFilename), sasTargetFolderRef, (sender, i) => { });
+            var fileInfo = new FileInfo(targetFilename);
+            var fileSize = fileInfo.Length;
+            var uploadTask = LargeFileUploaderUtils.UploadAsync(fileInfo, sasTargetFolderRef, (sender, i) => { });
             Task.WaitAll(uploadTask);
             File.Delete(targetFilename); // delete local file after upload
             Console.WriteLine("Upload done");
+
+            // callback to notify service about task completion
+            Task.Factory.StartNew(() => DoCallback(encodingTaskMetaData, mainCancellationToken, encodingTaskMetaData.TargetFilename, uploadTask, fileSize), mainCancellationToken);
 
             // Update status to DONE
             task.Status = Constants.STATUS_DONE;
@@ -306,6 +315,39 @@ namespace AzureChunkingMediaEncoder
             task.TaskMetaData.Duration = watch.Elapsed;
             var updateOperation3 = TableOperation.Replace(task);
             tableRef.Execute(updateOperation3);
+        }
+
+        private void DoCallback(EncodingTaskMetaData encodingTaskMetaData, CancellationToken mainCancellationToken,
+            string targetFilename, Task<string> uploadTask, long fileSize)
+        {
+            try
+            {
+                var retryStrategy = new Incremental(5, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
+                var retryPolicy = new RetryPolicy<HttpErrorStrategy>(retryStrategy);
+                retryPolicy.ExecuteAction(() =>
+                {
+                    var jsonTemplate = File.ReadAllText("callbacktemplate.json");
+                    jsonTemplate = jsonTemplate.Replace("__name__", targetFilename);
+                    if (targetFilename.Split('_').Length >= 4)
+                    {
+                        jsonTemplate = jsonTemplate.Replace("__titleid__", targetFilename.Split('_')[3]);
+                    }
+                    jsonTemplate =
+                        jsonTemplate.Replace("__jobid__", encodingTaskMetaData.JobId)
+                            .Replace("__taskid__", encodingTaskMetaData.TaskId)
+                            .Replace("__azureurl__", uploadTask.Result)
+                            .Replace("__size__", fileSize.ToString());
+                    var client = new HttpClient();
+                    var content = new StringContent(jsonTemplate, Encoding.UTF8, "application/json");
+                    client.DefaultRequestHeaders.Add("tenant", "root");
+                    var callbackTask = client.PostAsync(encodingTaskMetaData.CallbackUri, content, mainCancellationToken);
+                    Task.WaitAll(callbackTask);
+                });
+            }
+            catch
+            {
+                // ignore
+            }
         }
     }
 }

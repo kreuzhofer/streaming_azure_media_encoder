@@ -22,13 +22,14 @@ namespace AzureChunkingMediaFileUploader
             if (Progress != null) { Progress(progress); }
         }
 
-        public static async Task TrackProgress(string jobId, string connectionString, int count)
+        public static async Task<bool> TrackProgress(string jobId, string connectionString, int count)
         {
             var storageAccount = CloudStorageAccount.Parse(connectionString);
             var tableClient = storageAccount.CreateCloudTableClient();
             var table = tableClient.GetTableReference(Constants.TaskTableName);
 
             bool done = false;
+            bool jobResult = false;
             int percentageTotal = 0;
             int percentageLast = 0;
             do
@@ -49,10 +50,12 @@ namespace AzureChunkingMediaFileUploader
                 {
                     done = true;
                     DoLog("All jobs done. Encoding time: {0}", result.Max(m=>m.TaskMetaData.EndTime)-result.Min(m=>m.TaskMetaData.StartTime));
+                    jobResult = result.All(r => r.Status == Constants.STATUS_DONE);
                 }
                 await Task.Delay(1000);
 
             } while (done == false);
+            return jobResult;
         }
     }
 }
