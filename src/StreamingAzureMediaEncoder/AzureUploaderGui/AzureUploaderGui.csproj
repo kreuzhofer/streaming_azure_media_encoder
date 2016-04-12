@@ -118,6 +118,10 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
     <None Include="packages.config" />
+    <Resource Include="Assets\Premier_League_logo.png" />
+    <Resource Include="Assets\Sky_Sports_logo.png" />
+    <Resource Include="Assets\Microsoft-logo_rgb_c-gray.png" />
+    <Resource Include="Assets\Azure-Logo.png" />
     <Content Include="profile.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -130,6 +134,7 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="..\Shared\Shared.projitems" Label="Shared" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
