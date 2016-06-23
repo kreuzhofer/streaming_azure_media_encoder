@@ -151,10 +151,14 @@ namespace AzureUploaderGui
 
                     var callBackBody = String.Format(callbackTemplate, status, result, jobId);
                     var callBackEndpoint = ConfigurationManager.AppSettings["JobCallbackEndpoint"];
-
-                    var client = new HttpClient();
-                    var content = new StringContent(callBackBody, Encoding.UTF8, "application/json");
-                    await client.PostAsync(new Uri(callBackEndpoint), content);
+                    
+                    // callback for job
+                    if (!String.IsNullOrEmpty(callBackEndpoint))
+                    {
+                        var client = new HttpClient();
+                        var content = new StringContent(callBackBody, Encoding.UTF8, "application/json");
+                        await client.PostAsync(new Uri(callBackEndpoint), content);
+                    }
                 });
             }
             catch

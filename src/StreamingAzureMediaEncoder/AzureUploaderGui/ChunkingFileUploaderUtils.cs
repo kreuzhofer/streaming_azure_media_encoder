@@ -195,8 +195,12 @@ namespace AzureChunkingMediaFileUploader
                         TableUri = tableRef.Uri,
                         EncoderTimeout = Constants.ENCODER_TIMEOUT,
                         RenditionIndex = index,
-                        CallbackUri = new Uri(ConfigurationManager.AppSettings["TaskCallbackEndpoint"])
+                        
                     };
+                    if (!String.IsNullOrEmpty(ConfigurationManager.AppSettings["TaskCallbackEndpoint"]))
+                    {
+                        metaData.CallbackUri = new Uri(ConfigurationManager.AppSettings["TaskCallbackEndpoint"]);
+                    }
                     result.Add(metaData);
                     queue.AddMessage(new CloudQueueMessage(JsonConvert.SerializeObject(metaData)));
                     index++;

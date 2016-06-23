@@ -14,8 +14,8 @@
         </Grid.RowDefinitions>
         <StackPanel Orientation="Vertical">
             <Grid Height="70">
-                <Image Source="Assets/Sky_Sports_logo.png" Height="25" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,10,0,0"/>
-                <Image Source="Assets/Premier_League_logo.png" HorizontalAlignment="Right"/>
+                <Image Source="Assets/Left_logo.png" Height="25" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,10,0,0"/>
+                <Image Source="Assets/Right_logo.png" HorizontalAlignment="Right"/>
             </Grid>
             <TextBlock Text="Video file" Margin="0,10,0,0" FontWeight="Bold" />
             <Grid>

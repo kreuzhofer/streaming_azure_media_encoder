@@ -151,8 +151,6 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
     <None Include="packages.config" />
-    <Resource Include="Assets\Premier_League_logo.png" />
-    <Resource Include="Assets\Sky_Sports_logo.png" />
     <Resource Include="Assets\Microsoft-logo_rgb_c-gray.png" />
     <Resource Include="Assets\Azure-Logo.png" />
     <Content Include="profile.json">
@@ -165,7 +163,9 @@
     <AppDesigner Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
+    <None Include="App.config">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <ItemGroup />
   <Import Project="..\Shared\Shared.projitems" Label="Shared" />
